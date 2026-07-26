@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:workflow:acceptance:1.0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "work_request_id",
+    "handoff_id",
+    "decider_role",
+    "outcome",
+    "notes",
+    "decided_at"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "kind": {"const": "acceptance"},
+    "id": {"type": "string", "pattern": "^ACC-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"},
+    "work_request_id": {
+      "type": "string",
+      "pattern": "^WRK-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"
+    },
+    "handoff_id": {
+      "type": "string",
+      "pattern": "^HND-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"
+    },
+    "decider_role": {"$ref": "#/$defs/slug"},
+    "outcome": {"enum": ["accepted", "changes_requested", "rejected"]},
+    "notes": {"type": "string", "minLength": 1, "maxLength": 20000},
+    "decided_at": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,63}$"
+    }
+  }
+}

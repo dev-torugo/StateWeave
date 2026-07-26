@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stateweave"
+version = "0.0.0.dev0"
+description = "Runtime-neutral persistent memory and governed workflow framework"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+  {name = "dev-torugo"},
+]
+license-files = []
+dependencies = [
+  "jsonschema>=4.23,<5",
+]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+
+[project.optional-dependencies]
+dev = [
+  "build>=1.2,<2",
+  "mypy>=1.17,<2",
+  "ruff==0.12.12",
+]
+
+[project.scripts]
+stateweave = "stateweave.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"stateweave.core" = ["schemas/*.json"]
+"stateweave.orchestration" = ["schemas/*.json"]
+"stateweave.policy" = ["schemas/*.json"]
+"stateweave.workflow" = ["schemas/*.json"]

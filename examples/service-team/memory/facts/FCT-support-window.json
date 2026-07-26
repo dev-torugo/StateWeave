@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "kind": "fact",
+  "id": "FCT-support-window",
+  "title": "Synthetic support window baseline",
+  "statement": "The demonstration service window is 09:00–17:00 UTC.",
+  "status": "verified",
+  "domain": "operations",
+  "fact_class": "immutable",
+  "recorded_at": "2026-07-25T09:00:00Z",
+  "verified_at": "2026-07-25T09:00:00Z",
+  "review_after": null,
+  "confidence": "high",
+  "owner_role": "operator",
+  "classification": "internal",
+  "sources": [
+    {
+      "uri": "https://example.invalid/service/support-window",
+      "title": "Synthetic operating agreement",
+      "accessed_at": "2026-07-25T09:00:00Z",
+      "kind": "internal"
+    }
+  ],
+  "claim": {
+    "subject": "synthetic-service",
+    "predicate": "support-window",
+    "scope": "demo",
+    "object": {
+      "start": "09:00",
+      "end": "17:00",
+      "timezone": "UTC"
+    }
+  },
+  "references": [],
+  "supersedes": [],
+  "superseded_by": null
+}

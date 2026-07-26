@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "kind": "fact",
+  "id": "FCT-dataset-v1",
+  "title": "Synthetic dataset checksum",
+  "statement": "The immutable synthetic dataset has checksum demo-0001.",
+  "status": "verified",
+  "domain": "research",
+  "fact_class": "immutable",
+  "recorded_at": "2026-07-25T12:00:00Z",
+  "verified_at": "2026-07-25T12:00:00Z",
+  "review_after": null,
+  "confidence": "high",
+  "owner_role": "researcher",
+  "classification": "public",
+  "sources": [
+    {
+      "uri": "https://example.invalid/research/dataset-v1",
+      "title": "Synthetic dataset registry",
+      "accessed_at": "2026-07-25T12:00:00Z",
+      "kind": "primary"
+    }
+  ],
+  "claim": {
+    "subject": "synthetic-dataset-v1",
+    "predicate": "checksum",
+    "scope": "release",
+    "object": "demo-0001"
+  },
+  "references": [],
+  "supersedes": [],
+  "superseded_by": null
+}

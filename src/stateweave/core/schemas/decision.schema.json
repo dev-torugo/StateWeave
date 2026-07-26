@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:schema:decision:1.0",
+  "title": "StateWeave decision record 1.0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "title",
+    "status",
+    "decided_at",
+    "decider_role",
+    "classification",
+    "context",
+    "decision",
+    "consequences",
+    "references",
+    "supersedes",
+    "superseded_by"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "kind": {
+      "const": "decision"
+    },
+    "id": {
+      "$ref": "#/$defs/decisionId"
+    },
+    "title": {
+      "$ref": "#/$defs/text"
+    },
+    "status": {
+      "enum": [
+        "proposed",
+        "accepted",
+        "superseded",
+        "rejected"
+      ]
+    },
+    "decided_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "decider_role": {
+      "$ref": "#/$defs/slug"
+    },
+    "classification": {
+      "$ref": "#/$defs/slug"
+    },
+    "context": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 50000
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 50000
+    },
+    "consequences": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "$ref": "#/$defs/text"
+      }
+    },
+    "references": {
+      "$ref": "#/$defs/recordIds"
+    },
+    "supersedes": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 100,
+      "items": {
+        "$ref": "#/$defs/decisionId"
+      }
+    },
+    "superseded_by": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/decisionId"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 5000
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,63}$"
+    },
+    "decisionId": {
+      "type": "string",
+      "pattern": "^DEC-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"
+    },
+    "recordIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 500,
+      "items": {
+        "type": "string",
+        "pattern": "^(?:FCT|DEC|STATE)-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"
+      }
+    }
+  }
+}

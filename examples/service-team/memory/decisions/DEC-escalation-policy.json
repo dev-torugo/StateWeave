@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "kind": "decision",
+  "id": "DEC-escalation-policy",
+  "title": "Use explicit synthetic escalation",
+  "status": "accepted",
+  "decided_at": "2026-07-25T10:00:00Z",
+  "decider_role": "maintainer",
+  "classification": "internal",
+  "context": "The demonstration needs deterministic handling outside its support window.",
+  "decision": "Queue non-urgent work and page the configured operator only for critical fixtures.",
+  "consequences": [
+    "Every critical fixture records its escalation outcome."
+  ],
+  "references": [
+    "FCT-support-window"
+  ],
+  "supersedes": [],
+  "superseded_by": null
+}

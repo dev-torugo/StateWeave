@@ -1,0 +1,187 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-07-26T03:24:00Z",
+  "extraction_mode": "clean_transformation",
+  "source_repository": {
+    "visibility": "private_local_source",
+    "revision_observed": "55730e7d79e7d2a99a745ddaf51c36ce659e8870",
+    "branch_observed": "codex/dashboard-local-vps-ready",
+    "worktree_entries_observed": 386,
+    "absolute_path_exported": false
+  },
+  "authorship": [
+    {
+      "identity": "dev-torugo",
+      "basis": "source Git author metadata for every allow-listed tracked implementation source",
+      "ownership_confirmed": true,
+      "ownership_confirmed_at": "2026-07-26",
+      "confirmation_basis": "direct_authorized_project_owner_gate"
+    }
+  ],
+  "files": [
+    {
+      "source": "memory/README.md",
+      "source_revision": "e82822bd5a64be03682519151c616155b44f2833",
+      "source_worktree_sha256": "ead8beef6f5efd48716a4e4bdc2449b5382f898891633449304a00f6ba88fe49",
+      "source_worktree_status": "clean",
+      "author_identity": "dev-torugo",
+      "mode": "conceptual_reimplementation",
+      "destinations": [
+        "README.md",
+        "docs/architecture.md",
+        "src/stateweave/core/audit.py"
+      ],
+      "notes": "Lifecycle, TTL, and living-memory concepts were generalized; no source records or project policy were copied."
+    },
+    {
+      "source": "scripts/memory_audit.py",
+      "source_revision": "e82822bd5a64be03682519151c616155b44f2833",
+      "source_worktree_sha256": "b7793e0e8cb5e296206bdff806bc87b25ebd221c61a42ae2b1ea832c2faf6652",
+      "source_worktree_status": "modified",
+      "author_identity": "dev-torugo",
+      "mode": "clean_reimplementation",
+      "destinations": [
+        "src/stateweave/core/audit.py",
+        "tests/test_memory_audit.py"
+      ],
+      "notes": "Root discovery and fixed layout were removed. Configurable TTL, reciprocal supersession, cycles, backlinks, structured conflicts, and review queues were added."
+    },
+    {
+      "source": "scripts/validate_repo.py",
+      "source_revision": "06ecb843d4b54b1f11af0a3fe4335ada4dbd212b",
+      "source_worktree_sha256": "44ba8890f099ed8446db087b2d2fb970e1fb4af054def8157f6ab57e3a0d0a71",
+      "source_worktree_status": "modified",
+      "author_identity": "dev-torugo",
+      "mode": "selective_clean_reimplementation",
+      "destinations": [
+        "src/stateweave/core/config.py",
+        "src/stateweave/core/project.py",
+        "src/stateweave/core/schema.py",
+        "src/stateweave/core/schemas/fact.schema.json",
+        "src/stateweave/core/schemas/decision.schema.json",
+        "src/stateweave/core/schemas/state.schema.json",
+        "tests/test_schema_validation.py"
+      ],
+      "notes": "Only generic record-validation concepts were retained. Business, demo, cloud, fixed-role, and fixed-directory contracts were excluded. Packaged contracts are enforced with the official Draft 2020-12 implementation."
+    },
+    {
+      "source": "tests/test_repository.py",
+      "source_revision": "c0c973be2e37c574613a9e0ced9d13d763f08f83",
+      "source_worktree_sha256": "f490d16e114ca343e6c192ff5ae207dd0283df50463a47a8a5f9cfde49f338ac",
+      "source_worktree_status": "modified",
+      "author_identity": "dev-torugo",
+      "mode": "behavioral_reimplementation",
+      "destinations": [
+        "tests/test_config_and_project.py",
+        "tests/test_memory_audit.py",
+        "tests/test_backup_and_migration.py"
+      ],
+      "notes": "Generic freshness and duplicate/reference behaviors informed new synthetic tests. Source fixtures and repository-wide integration assumptions were not copied."
+    },
+    {
+      "source": "memory/decisions/ADR-20260717-006-intellectual-property.md",
+      "source_revision": "e82822bd5a64be03682519151c616155b44f2833",
+      "source_worktree_sha256": "e7de61705ac4e3d5cfaee53bb693bfc219e2593339b1641f346a112e476b3c63",
+      "source_worktree_status": "clean",
+      "author_identity": "dev-torugo",
+      "mode": "consulted_not_copied",
+      "destinations": [
+        "docs/decisions/ADR-0001-extraction-boundary.md",
+        "LICENSING-PROPOSAL.md"
+      ],
+      "notes": "Used only to define the clean-reuse boundary and pending rights gate."
+    },
+    {
+      "source": "memory/decisions/ADR-20260717-007-agent-memory-authority.md",
+      "source_revision": "06ecb843d4b54b1f11af0a3fe4335ada4dbd212b",
+      "source_worktree_sha256": "14897220c3cbcea95455cc532f32c5265936a061b8716f0496d6fc538827474e",
+      "source_worktree_status": "clean",
+      "author_identity": "dev-torugo",
+      "mode": "conceptual_reimplementation",
+      "destinations": [
+        "src/stateweave/core/config.py",
+        "docs/architecture.md"
+      ],
+      "notes": "Fixed authority was replaced with configured roles. External-action boundaries will live in optional workflow policy."
+    },
+    {
+      "source": "agents/schemas/work-request.schema.json",
+      "source_revision": "06ecb843d4b54b1f11af0a3fe4335ada4dbd212b",
+      "source_worktree_sha256": "41a2e54fd8f18ab142fb3e944b930cea421a93e8dd2708570ddecc2963d27cae",
+      "source_worktree_status": "clean",
+      "author_identity": "dev-torugo",
+      "mode": "conceptual_reimplementation",
+      "destinations": [
+        "src/stateweave/workflow/schemas/work-request.schema.json",
+        "src/stateweave/workflow/ledger.py",
+        "tests/test_workflow_and_policy.py"
+      ],
+      "notes": "Project roles, authorities, identifiers, and directories were replaced by portable fields and project-owned policy."
+    },
+    {
+      "source": "agents/schemas/handoff.schema.json",
+      "source_revision": "06ecb843d4b54b1f11af0a3fe4335ada4dbd212b",
+      "source_worktree_sha256": "9236c839925f8f7464d0f4307cd0b49c4f54cbd64dbdb89f6309034e77561bd8",
+      "source_worktree_status": "clean",
+      "author_identity": "dev-torugo",
+      "mode": "conceptual_reimplementation",
+      "destinations": [
+        "src/stateweave/workflow/schemas/handoff.schema.json",
+        "src/stateweave/workflow/ledger.py",
+        "tests/test_workflow_and_policy.py"
+      ],
+      "notes": "Evidence strengths and limitations were generalized; operational handoffs and private evidence were excluded."
+    },
+    {
+      "source": "agents/schemas/acceptance.schema.json",
+      "source_revision": "06ecb843d4b54b1f11af0a3fe4335ada4dbd212b",
+      "source_worktree_sha256": "6debfbe799d7a34288b583e14a85d03479aa91060271740474bc5a451d37cf64",
+      "source_worktree_status": "clean",
+      "author_identity": "dev-torugo",
+      "mode": "conceptual_reimplementation",
+      "destinations": [
+        "src/stateweave/workflow/schemas/acceptance.schema.json",
+        "src/stateweave/workflow/ledger.py",
+        "tests/test_workflow_and_policy.py"
+      ],
+      "notes": "Acceptance outcomes were retained as neutral workflow concepts; fixed authority and source records were excluded."
+    },
+    {
+      "source": "operations/evidence/persistent-memory-framework-readiness-2026-07-25.md",
+      "source_revision": null,
+      "source_worktree_sha256": "dfdb6f7f93352eb366df111ebb69cb9ab304e88595e0b7d47f900f382dc098b6",
+      "source_worktree_status": "untracked",
+      "author_identity": null,
+      "mode": "requirements_evidence_only",
+      "destinations": [
+        "docs/project-plan.md"
+      ],
+      "notes": "The private audit was not copied. Its findings define gates and exclusions."
+    }
+  ],
+  "excluded_classes": [
+    "facts and internal decisions",
+    "work requests, handoffs, acceptances, authorizations, and execution records",
+    "telemetry snapshots, prices, private evidence, receipts, prompts, chats, and raw logs",
+    "customer or laboratory datasets, projects, photos, attachments, and backups",
+    "business, billing, infrastructure, marketplace, and product-specific implementation",
+    "credentials, secrets, PII, banking data, and signed agreements",
+    "runtime configuration and fixed project policy"
+  ],
+  "publication_authorization": {
+    "status": "approved",
+    "approved_at": "2026-07-26",
+    "scope": "initial public GitHub development repository and source push",
+    "limitations": [
+      "no definitive license",
+      "no tag or release",
+      "no package publication",
+      "no beta or stable maturity claim"
+    ]
+  },
+  "publication_gates": [
+    "legal review of the definitive source-available license and contribution terms",
+    "trademark and naming review",
+    "human approval before any tag, release, artifact upload, or package publication"
+  ]
+}

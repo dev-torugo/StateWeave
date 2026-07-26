@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "kind": "state",
+  "id": "STATE-current",
+  "updated_at": "2026-07-25T11:00:00Z",
+  "classification": "internal",
+  "owner_role": "operator",
+  "references": [
+    "DEC-escalation-policy"
+  ],
+  "items": [
+    {
+      "source_id": "DEC-escalation-policy",
+      "summary": "Explicit synthetic escalation is active.",
+      "status": "active"
+    }
+  ]
+}

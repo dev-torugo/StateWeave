@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:policy:pack:1.0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "roles",
+    "authority",
+    "routing",
+    "telemetry"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+    "roles": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/slug"}
+    },
+    "authority": {
+      "type": "object",
+      "required": ["allowed_effects", "human_required_effects"],
+      "properties": {
+        "allowed_effects": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {"$ref": "#/$defs/slug"},
+          "additionalProperties": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"$ref": "#/$defs/slug"}
+          }
+        },
+        "human_required_effects": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/slug"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "routing": {
+      "type": "object",
+      "required": ["risk_ceiling_by_role"],
+      "properties": {
+        "risk_ceiling_by_role": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {"$ref": "#/$defs/slug"},
+          "additionalProperties": {
+            "enum": ["low", "moderate", "high", "critical"]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "telemetry": {
+      "type": "object",
+      "required": ["enabled", "allowed_fields", "retention_days"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "allowed_fields": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/slug"}
+        },
+        "retention_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3650
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,63}$"
+    }
+  }
+}

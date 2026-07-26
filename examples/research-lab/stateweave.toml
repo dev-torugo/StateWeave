@@ -1,0 +1,40 @@
+schema_version = 1
+
+[project]
+id = "research-lab"
+name = "Synthetic Research Lab"
+
+[paths]
+facts = "memory/facts"
+decisions = "memory/decisions"
+state = "memory/state/current.json"
+metadata = ".stateweave"
+backups = ".stateweave/backups"
+migrations = ".stateweave/migrations"
+
+[memory]
+default_fact_class = "general"
+no_expiry_classes = ["immutable"]
+
+[memory.ttl_days]
+volatile = 30
+general = 90
+policy = 180
+
+[roles]
+allowed = ["maintainer", "reviewer", "researcher"]
+
+[limits]
+max_record_bytes = 262144
+max_records = 10000
+max_state_items = 200
+lock_timeout_seconds = 5.0
+lock_stale_after_seconds = 900
+
+[policy]
+allowed_classifications = ["public", "internal"]
+review_warning_days = 14
+enforce_ttl_ceiling = true
+fail_on_stale_verified = true
+require_reciprocal_supersession = true
+detect_structured_conflicts = true

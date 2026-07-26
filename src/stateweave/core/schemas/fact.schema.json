@@ -1,0 +1,233 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:schema:fact:1.0",
+  "title": "StateWeave fact record 1.0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "title",
+    "statement",
+    "status",
+    "domain",
+    "fact_class",
+    "recorded_at",
+    "verified_at",
+    "review_after",
+    "confidence",
+    "owner_role",
+    "classification",
+    "sources",
+    "claim",
+    "references",
+    "supersedes",
+    "superseded_by"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "kind": {
+      "const": "fact"
+    },
+    "id": {
+      "$ref": "#/$defs/factId"
+    },
+    "title": {
+      "$ref": "#/$defs/nonEmptyText"
+    },
+    "statement": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 20000
+    },
+    "status": {
+      "enum": [
+        "provisional",
+        "verified",
+        "disputed",
+        "deprecated"
+      ]
+    },
+    "domain": {
+      "$ref": "#/$defs/slug"
+    },
+    "fact_class": {
+      "$ref": "#/$defs/slug"
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "verified_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "review_after": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date"
+    },
+    "confidence": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "owner_role": {
+      "$ref": "#/$defs/slug"
+    },
+    "classification": {
+      "$ref": "#/$defs/slug"
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "$ref": "#/$defs/source"
+      }
+    },
+    "claim": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/claim"
+        }
+      ]
+    },
+    "references": {
+      "$ref": "#/$defs/recordIds"
+    },
+    "supersedes": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 100,
+      "items": {
+        "$ref": "#/$defs/factId"
+      }
+    },
+    "superseded_by": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/factId"
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "verified"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "verified_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "nonEmptyText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,63}$"
+    },
+    "factId": {
+      "type": "string",
+      "pattern": "^FCT-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"
+    },
+    "recordId": {
+      "type": "string",
+      "pattern": "^(?:FCT|DEC|STATE)-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"
+    },
+    "recordIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 500,
+      "items": {
+        "$ref": "#/$defs/recordId"
+      }
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "uri",
+        "title",
+        "accessed_at",
+        "kind"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "uri",
+          "maxLength": 4096
+        },
+        "title": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "accessed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "kind": {
+          "enum": [
+            "primary",
+            "secondary",
+            "internal"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "claim": {
+      "type": "object",
+      "required": [
+        "subject",
+        "predicate",
+        "scope",
+        "object"
+      ],
+      "properties": {
+        "subject": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "predicate": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "scope": {
+          "$ref": "#/$defs/nonEmptyText"
+        },
+        "object": true
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:workflow:work-request:1.0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "title",
+    "objective",
+    "requester_role",
+    "assignee_role",
+    "risk",
+    "requested_effects",
+    "status",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "kind": {"const": "work_request"},
+    "id": {"type": "string", "pattern": "^WRK-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"},
+    "title": {"type": "string", "minLength": 1, "maxLength": 500},
+    "objective": {"type": "string", "minLength": 10, "maxLength": 20000},
+    "requester_role": {"$ref": "#/$defs/slug"},
+    "assignee_role": {"$ref": "#/$defs/slug"},
+    "risk": {"enum": ["low", "moderate", "high", "critical"]},
+    "requested_effects": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 100,
+      "items": {"$ref": "#/$defs/slug"}
+    },
+    "status": {
+      "enum": ["proposed", "approved", "in_progress", "ready", "accepted", "rejected"]
+    },
+    "created_at": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,63}$"
+    }
+  }
+}

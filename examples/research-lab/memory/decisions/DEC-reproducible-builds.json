@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "kind": "decision",
+  "id": "DEC-reproducible-builds",
+  "title": "Require reproducible synthetic builds",
+  "status": "accepted",
+  "decided_at": "2026-07-25T12:30:00Z",
+  "decider_role": "maintainer",
+  "classification": "public",
+  "context": "The synthetic research output must be independently reproducible.",
+  "decision": "Every release candidate records input hashes and deterministic checks.",
+  "consequences": [
+    "Unhashed inputs cannot enter a release candidate."
+  ],
+  "references": [
+    "FCT-dataset-v1"
+  ],
+  "supersedes": [],
+  "superseded_by": null
+}

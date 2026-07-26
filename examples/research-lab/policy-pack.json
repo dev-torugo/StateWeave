@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "id": "research-lab-policy",
+  "roles": ["maintainer", "reviewer", "contributor"],
+  "authority": {
+    "allowed_effects": {
+      "maintainer": ["read-repository", "write-repository", "publish-artifact"],
+      "reviewer": ["read-repository"],
+      "contributor": ["read-repository", "write-repository"]
+    },
+    "human_required_effects": ["publish-artifact"]
+  },
+  "routing": {
+    "risk_ceiling_by_role": {
+      "maintainer": "critical",
+      "reviewer": "high",
+      "contributor": "moderate"
+    }
+  },
+  "telemetry": {
+    "enabled": true,
+    "allowed_fields": ["duration-ms", "status", "task-kind"],
+    "retention_days": 30
+  }
+}

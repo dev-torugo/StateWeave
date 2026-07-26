@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "id": "service-team-policy",
+  "roles": ["maintainer", "reviewer", "contributor"],
+  "authority": {
+    "allowed_effects": {
+      "maintainer": ["read-repository", "write-repository", "external-message"],
+      "reviewer": ["read-repository"],
+      "contributor": ["read-repository", "write-repository"]
+    },
+    "human_required_effects": ["external-message"]
+  },
+  "routing": {
+    "risk_ceiling_by_role": {
+      "maintainer": "critical",
+      "reviewer": "high",
+      "contributor": "low"
+    }
+  },
+  "telemetry": {
+    "enabled": false,
+    "allowed_fields": ["duration-ms", "status"],
+    "retention_days": 14
+  }
+}

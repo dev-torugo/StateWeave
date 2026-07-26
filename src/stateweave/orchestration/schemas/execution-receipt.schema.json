@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:orchestration:execution-receipt:1.0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "task_id",
+    "worker_id",
+    "status",
+    "started_at",
+    "finished_at",
+    "input_manifest_sha256",
+    "outputs",
+    "runtime_observation",
+    "metrics"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "kind": {"const": "execution_receipt"},
+    "id": {"type": "string", "pattern": "^RCP-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"},
+    "task_id": {"type": "string", "pattern": "^TSK-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"},
+    "worker_id": {"type": "string", "pattern": "^WKR-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"},
+    "status": {"enum": ["succeeded", "failed", "cancelled"]},
+    "started_at": {"type": "string", "format": "date-time"},
+    "finished_at": {"type": "string", "format": "date-time"},
+    "input_manifest_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "outputs": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "required": ["name", "sha256"],
+        "properties": {
+          "name": {"$ref": "#/$defs/slug"},
+          "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "runtime_observation": {
+      "type": "object",
+      "required": ["adapter", "implementation", "model_id"],
+      "properties": {
+        "adapter": {"$ref": "#/$defs/slug"},
+        "implementation": {"type": "string", "minLength": 1, "maxLength": 200},
+        "model_id": {"type": ["string", "null"], "minLength": 1, "maxLength": 200}
+      },
+      "additionalProperties": false
+    },
+    "metrics": {
+      "type": "object",
+      "required": ["duration_ms", "input_units", "output_units"],
+      "properties": {
+        "duration_ms": {"type": "integer", "minimum": 0},
+        "input_units": {"type": ["integer", "null"], "minimum": 0},
+        "output_units": {"type": ["integer", "null"], "minimum": 0}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "slug": {"type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$"}
+  }
+}

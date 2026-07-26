@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:schema:state:1.0",
+  "title": "StateWeave current state 1.0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "updated_at",
+    "classification",
+    "owner_role",
+    "references",
+    "items"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "kind": {
+      "const": "state"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^STATE-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "classification": {
+      "$ref": "#/$defs/slug"
+    },
+    "owner_role": {
+      "$ref": "#/$defs/slug"
+    },
+    "references": {
+      "$ref": "#/$defs/recordIds"
+    },
+    "items": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": [
+          "source_id",
+          "summary",
+          "status"
+        ],
+        "properties": {
+          "source_id": {
+            "$ref": "#/$defs/recordId"
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "status": {
+            "enum": [
+              "active",
+              "blocked",
+              "pending",
+              "done"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,63}$"
+    },
+    "recordId": {
+      "type": "string",
+      "pattern": "^(?:FCT|DEC)-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"
+    },
+    "recordIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/recordId"
+      }
+    }
+  }
+}

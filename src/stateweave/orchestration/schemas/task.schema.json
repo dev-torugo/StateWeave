@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:orchestration:task:1.0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "title",
+    "objective",
+    "dependencies",
+    "required_capabilities",
+    "risk",
+    "input_manifest_id",
+    "expected_outputs"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "kind": {"const": "task"},
+    "id": {"type": "string", "pattern": "^TSK-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"},
+    "title": {"type": "string", "minLength": 1, "maxLength": 500},
+    "objective": {"type": "string", "minLength": 10, "maxLength": 20000},
+    "dependencies": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 500,
+      "items": {"type": "string", "pattern": "^TSK-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"}
+    },
+    "required_capabilities": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 100,
+      "items": {"$ref": "#/$defs/slug"}
+    },
+    "risk": {"enum": ["low", "moderate", "high", "critical"]},
+    "input_manifest_id": {
+      "type": "string",
+      "pattern": "^INP-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"
+    },
+    "expected_outputs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "maxItems": 100,
+      "items": {"$ref": "#/$defs/slug"}
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "slug": {"type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$"}
+  }
+}

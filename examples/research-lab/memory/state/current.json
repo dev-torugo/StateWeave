@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "kind": "state",
+  "id": "STATE-current",
+  "updated_at": "2026-07-25T13:00:00Z",
+  "classification": "public",
+  "owner_role": "maintainer",
+  "references": [
+    "DEC-reproducible-builds"
+  ],
+  "items": [
+    {
+      "source_id": "DEC-reproducible-builds",
+      "summary": "Reproducible synthetic builds are active.",
+      "status": "active"
+    }
+  ]
+}

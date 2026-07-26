@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:schema:config:1",
+  "title": "StateWeave project configuration 1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project",
+    "paths",
+    "memory",
+    "roles",
+    "limits",
+    "policy"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "project": {
+      "type": "object",
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{2,63}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "additionalProperties": false
+    },
+    "paths": {
+      "type": "object",
+      "required": [
+        "facts",
+        "decisions",
+        "state",
+        "metadata",
+        "backups",
+        "migrations"
+      ],
+      "properties": {
+        "facts": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "decisions": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "state": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "metadata": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "backups": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "migrations": {
+          "$ref": "#/$defs/relativePath"
+        }
+      },
+      "additionalProperties": false
+    },
+    "memory": {
+      "type": "object",
+      "required": [
+        "default_fact_class",
+        "no_expiry_classes",
+        "ttl_days"
+      ],
+      "properties": {
+        "default_fact_class": {
+          "$ref": "#/$defs/slug"
+        },
+        "no_expiry_classes": {
+          "$ref": "#/$defs/slugs"
+        },
+        "ttl_days": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "$ref": "#/$defs/slug"
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 36500
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "roles": {
+      "type": "object",
+      "required": [
+        "allowed"
+      ],
+      "properties": {
+        "allowed": {
+          "$ref": "#/$defs/slugs"
+        }
+      },
+      "additionalProperties": false
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "max_record_bytes",
+        "max_records",
+        "max_state_items",
+        "lock_timeout_seconds",
+        "lock_stale_after_seconds"
+      ],
+      "properties": {
+        "max_record_bytes": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 16777216
+        },
+        "max_records": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "max_state_items": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000
+        },
+        "lock_timeout_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 300
+        },
+        "lock_stale_after_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 604800
+        }
+      },
+      "additionalProperties": false
+    },
+    "policy": {
+      "type": "object",
+      "required": [
+        "allowed_classifications",
+        "review_warning_days",
+        "enforce_ttl_ceiling",
+        "fail_on_stale_verified",
+        "require_reciprocal_supersession",
+        "detect_structured_conflicts"
+      ],
+      "properties": {
+        "allowed_classifications": {
+          "$ref": "#/$defs/slugs"
+        },
+        "review_warning_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3650
+        },
+        "enforce_ttl_ceiling": {
+          "type": "boolean"
+        },
+        "fail_on_stale_verified": {
+          "type": "boolean"
+        },
+        "require_reciprocal_supersession": {
+          "type": "boolean"
+        },
+        "detect_structured_conflicts": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,63}$"
+    },
+    "slugs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/slug"
+      }
+    },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "not": {
+        "anyOf": [
+          {
+            "pattern": "^(?:/|[A-Za-z]:[\\\\/])"
+          },
+          {
+            "pattern": "(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)"
+          }
+        ]
+      }
+    }
+  }
+}

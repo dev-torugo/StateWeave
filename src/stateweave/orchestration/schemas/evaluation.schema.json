@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:orchestration:evaluation:1.0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "receipt_id",
+    "outcome",
+    "checks",
+    "evaluated_at"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "kind": {"const": "evaluation"},
+    "id": {"type": "string", "pattern": "^EVL-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"},
+    "receipt_id": {"type": "string", "pattern": "^RCP-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"},
+    "outcome": {"enum": ["pass", "fail", "needs_review"]},
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "required": ["name", "status", "evidence"],
+        "properties": {
+          "name": {"$ref": "#/$defs/slug"},
+          "status": {"enum": ["pass", "fail", "skipped"]},
+          "evidence": {"type": "string", "minLength": 1, "maxLength": 4096}
+        },
+        "additionalProperties": false
+      }
+    },
+    "evaluated_at": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "slug": {"type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$"}
+  }
+}

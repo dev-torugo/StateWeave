@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:orchestration:input-manifest:1.0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "task_id",
+    "created_at",
+    "resources",
+    "parameters"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "kind": {"const": "input_manifest"},
+    "id": {"type": "string", "pattern": "^INP-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"},
+    "task_id": {"type": "string", "pattern": "^TSK-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "resources": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "required": ["name", "locator", "sha256", "classification"],
+        "properties": {
+          "name": {"$ref": "#/$defs/slug"},
+          "locator": {"type": "string", "minLength": 1, "maxLength": 4096},
+          "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "classification": {"$ref": "#/$defs/slug"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "parameters": {
+      "type": "object",
+      "maxProperties": 100
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "slug": {"type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$"}
+  }
+}

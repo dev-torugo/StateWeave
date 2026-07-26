@@ -1,0 +1,9 @@
+include AGENTS.md
+include AUTHORS.md
+include CHANGELOG.md
+include LICENSING-PROPOSAL.md
+include .github/workflows/ci.yml
+recursive-include docs *.json *.md
+recursive-include examples *.json *.md *.toml
+recursive-include scripts *.py *.sh
+recursive-include tests *.py
