@@ -54,6 +54,13 @@ broad dependency range and enabled rules beyond the verified lint contract.
 The development dependency was pinned to Ruff 0.12.12, the version used by the
 verified checkpoint, and all static checks were then repeated successfully.
 
+The first hosted run passed quality/build plus every Linux and macOS matrix
+job, but all three Windows jobs exposed a platform-ordering defect: path
+resolution raised `PathBoundaryError` before the official schema could return
+the documented `ConfigurationError`. Configuration loading now performs
+official schema validation before platform-specific path resolution, with
+regression coverage for both slash styles.
+
 ## Remaining gates
 
 1. Qualified legal review and adoption of definitive source-available terms.

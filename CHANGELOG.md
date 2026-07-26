@@ -14,3 +14,6 @@
   definitive-license, trademark, release, and package-publication gates.
 - Pinned the verified Ruff version so the public CI cannot silently widen its
   lint contract when a new tool release appears.
+- Made configuration schema validation precede platform-specific path
+  resolution so POSIX and Windows traversal inputs fail with the same public
+  configuration error.

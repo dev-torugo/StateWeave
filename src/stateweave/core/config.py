@@ -155,6 +155,12 @@ def load_config(path: str | Path) -> ProjectConfig:
             f"unsupported configuration schema_version {schema_version!r}; "
             f"expected {CONFIG_SCHEMA_VERSION}"
         )
+    schema_errors = validate_config(payload, source)
+    if schema_errors:
+        raise ConfigurationError(
+            "configuration does not satisfy the official Draft 2020-12 schema: "
+            + "; ".join(schema_errors)
+        )
     project = _mapping(payload.get("project"), "project")
     project_id = _string(project, "id", "project")
     if PROJECT_ID_PATTERN.fullmatch(project_id) is None:
@@ -272,12 +278,6 @@ def load_config(path: str | Path) -> ProjectConfig:
         "migrations": config.resolve(paths.migrations),
     }
     _validate_path_topology(config.source, resolved)
-    schema_errors = validate_config(payload, source)
-    if schema_errors:
-        raise ConfigurationError(
-            "configuration does not satisfy the official Draft 2020-12 schema: "
-            + "; ".join(schema_errors)
-        )
     return config
 
 

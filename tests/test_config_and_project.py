@@ -5,7 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from stateweave.core.config import load_config
-from stateweave.core.errors import ConfigurationError, PathBoundaryError, RecordError
+from stateweave.core.errors import ConfigurationError, RecordError
 from stateweave.core.project import initialize_project, record_destination
 
 
@@ -37,21 +37,32 @@ class ConfigAndProjectTests(unittest.TestCase):
                 )
             self.assertEqual((root / "owned.txt").read_text(), "preserve")
 
-    def test_config_rejects_path_escape(self) -> None:
-        with TemporaryDirectory() as temporary:
-            root = Path(temporary) / "consumer"
-            config = initialize_project(
-                root,
-                project_id="consumer-one",
-                project_name="Consumer One",
-            )
-            text = config.source.read_text(encoding="utf-8")
-            config.source.write_text(
-                text.replace('facts = "memory/facts"', 'facts = "../outside"'),
-                encoding="utf-8",
-            )
-            with self.assertRaises(PathBoundaryError):
-                load_config(root)
+    def test_config_rejects_path_escape_through_official_schema(self) -> None:
+        for label, invalid_path in (
+            ("posix traversal", "../outside"),
+            ("windows traversal", "..\\\\outside"),
+        ):
+            with self.subTest(label=label), TemporaryDirectory() as temporary:
+                root = Path(temporary) / "consumer"
+                config = initialize_project(
+                    root,
+                    project_id="consumer-one",
+                    project_name="Consumer One",
+                )
+                text = config.source.read_text(encoding="utf-8")
+                config.source.write_text(
+                    text.replace(
+                        'facts = "memory/facts"',
+                        f'facts = "{invalid_path}"',
+                    ),
+                    encoding="utf-8",
+                )
+                with self.assertRaises(ConfigurationError) as caught:
+                    load_config(root)
+                self.assertIn(
+                    "official Draft 2020-12 schema",
+                    str(caught.exception),
+                )
 
     def test_config_rejects_unknown_version_and_ttl_overlap(self) -> None:
         with TemporaryDirectory() as temporary:
