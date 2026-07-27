@@ -43,7 +43,8 @@ backlinks, and structured conflicts.
 
 Valid JSON is still untrusted data. The optional content-policy boundary runs a
 bounded traversal at candidate ingress, promotion, mutation-plan handling, and
-retrieval. The built-in baseline:
+retrieval. Codex session preparation and observation ingress use the same
+boundary. The built-in baseline:
 
 - blocks obvious credential assignments and private-key markers;
 - never includes the matched credential value in an error;
@@ -71,8 +72,10 @@ data in examples or tests.
   hardware, or physical disk failure mode.
 - Structured conflict detection compares declared claim keys and values; it is
   not natural-language truth inference.
-- The passive runtime adapter prepares documents but does not secure or attest
-  a host runtime.
+- The Codex bridge prepares and reconciles documents but does not launch,
+  secure, independently attest, or authorize a host runtime. An approval
+  reference is a host-supplied evidence locator, not proof verified by
+  StateWeave.
 - In-memory telemetry avoids implicit persistence but cannot enforce a
   consumer's downstream handling.
 - The current project has not completed hosted multi-process stress testing on

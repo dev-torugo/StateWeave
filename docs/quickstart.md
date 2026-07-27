@@ -59,9 +59,11 @@ Optional continuity artifacts have a separate audit:
 
 ```bash
 stateweave audit-continuity --config ./my-memory
+stateweave audit-codex --config ./my-memory
 ```
 
-Run both commands before backup or handoff when continuity modules are in use.
+Run the memory audit plus every audit for the optional stores in use before
+backup or handoff.
 
 ## Query and compile context
 
@@ -135,6 +137,48 @@ stateweave promote-candidate CND-<digest> \
 
 See `docs/continuity.md` for receipt/evaluation episodes, mutation plans, and
 recovery commands.
+
+## Prepare and reconcile a Codex host session
+
+Preparation reads complete schema-backed task, manifest, worker, query, and
+policy files. It persists the exact context and returns an immutable session;
+it does not launch Codex:
+
+```bash
+stateweave codex-prepare \
+  ./task.json \
+  ./input-manifest.json \
+  ./worker.json \
+  ./memory-query.json \
+  --config ./my-memory \
+  --policy ./policy-pack.json \
+  --role contributor \
+  --created-at 2026-07-27T18:00:00Z \
+  --requested-effect write-files \
+  --approval write-files=APR-reviewed-change
+```
+
+Review `ready_for_host`, every authority decision, content finding, and the
+embedded context. `dispatch.execution_authorized` is always `false`; the host
+owns the separate execution decision.
+
+After execution, the host must provide complete receipt and evaluation JSON
+documents. The receipt must bind the returned session, context, manifest,
+worker, outputs, and every requested effect:
+
+```bash
+stateweave codex-observe SES-<digest> \
+  ./execution-receipt.json \
+  ./evaluation.json \
+  --config ./my-memory \
+  --observer synthetic-host \
+  --observed-at 2026-07-27T18:05:00Z
+
+stateweave audit-codex --config ./my-memory
+stateweave audit-continuity --config ./my-memory
+```
+
+See `docs/codex-bridge.md` for the exact authority and persistence contract.
 
 ## Backup and restore
 

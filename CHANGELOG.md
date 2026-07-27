@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added an immutable Codex host bridge with policy-aware session preparation,
+  explicit approval references, content-bound dispatch, host-reported
+  receipt/evaluation reconciliation, effect observations, and adapter audit.
 - Added deterministic query, budgeted `ContextBundle` compilation, content
   warnings, conflicts, revision hashes, and a rebuildable derived index.
 - Added idempotent candidate capture, human-gated promotion, persistent

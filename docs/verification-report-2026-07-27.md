@@ -1,5 +1,10 @@
 # Continuity implementation verification — 2026-07-27
 
+Historical status: this continuity snapshot was subsequently committed and
+merged through PR #1 at `c3cf585`; all ten hosted matrix/static jobs passed.
+The report remains scoped to the evidence available when it was written and
+does not cover later host-bridge changes.
+
 ## Scope and epistemic boundary
 
 This report covers the local uncommitted worktree based on revision
