@@ -38,10 +38,16 @@ state = "memory/state/current.json"
 metadata = ".stateweave"
 backups = ".stateweave/backups"
 migrations = ".stateweave/migrations"
+extensions = ".stateweave/extensions"
 ```
 
 All paths must be relative and remain inside the project root after symlink and
 normalization resolution. Absolute paths and `..` traversal fail closed.
+`backups`, `migrations`, and `extensions` must be non-overlapping children of
+`metadata`. The generic extensions path lets optional modules persist
+project-owned data without making memory-core import those modules. Older
+schema-version-1 configurations that omit `extensions` resolve it to
+`<metadata>/extensions`; newly rendered configurations write it explicitly.
 
 ## TTL classes
 
@@ -83,7 +89,8 @@ lock_stale_after_seconds = 900
 ```
 
 Stale lock age is diagnostic. Expiration alone never transfers ownership or
-deletes a lock.
+deletes a lock. `lock-status` returns the owner digest and token required by
+the explicitly confirmed `recover-lock` operation.
 
 ## Policy
 

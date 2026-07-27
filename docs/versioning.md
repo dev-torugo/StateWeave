@@ -37,6 +37,9 @@ Linux job for formatting, lint, typing, the canonical gate, and distribution
 build. Actions are pinned to immutable revisions and checkout does not persist
 credentials.
 
-CI configuration alone does not prove hosted execution. The repository remains
-local, so no hosted run has been observed and no operating system is declared
-officially supported yet.
+The public development repository has hosted evidence for the publication
+snapshot: Linux and macOS matrix jobs passed, while the first Windows run found
+and led to a path-validation ordering fix. That evidence is historical and
+does not cover the current uncommitted continuity changes. No operating system
+is therefore declared officially supported until the current revision runs the
+complete hosted matrix.

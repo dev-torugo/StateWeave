@@ -14,7 +14,7 @@ from urllib.parse import urlsplit
 from jsonschema import Draft202012Validator, FormatChecker  # type: ignore[import-untyped]
 from jsonschema.exceptions import SchemaError  # type: ignore[import-untyped]
 
-SCHEMA_NAMES = ("config", "decision", "fact", "state")
+SCHEMA_NAMES = ("config", "decision", "fact", "state", "transaction")
 RECORD_SCHEMA_NAMES = frozenset({"decision", "fact", "state"})
 _RFC3339_DATETIME = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}"

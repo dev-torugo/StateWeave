@@ -25,6 +25,7 @@ class PathConfig:
     metadata: str
     backups: str
     migrations: str
+    extensions: str
 
 
 @dataclass(frozen=True)
@@ -97,6 +98,10 @@ class ProjectConfig:
     def migrations_dir(self) -> Path:
         return self.resolve(self.paths.migrations)
 
+    @property
+    def extensions_dir(self) -> Path:
+        return self.resolve(self.paths.extensions)
+
 
 def _mapping(value: Any, label: str) -> dict[str, Any]:
     if not isinstance(value, dict):
@@ -168,13 +173,21 @@ def load_config(path: str | Path) -> ProjectConfig:
     project_name = _string(project, "name", "project")
 
     paths_payload = _mapping(payload.get("paths"), "paths")
+    metadata_path = _string(paths_payload, "metadata", "paths")
+    extensions_path = paths_payload.get(
+        "extensions",
+        f"{metadata_path.rstrip('/')}/extensions",
+    )
+    if not isinstance(extensions_path, str) or not extensions_path.strip():
+        raise ConfigurationError("paths.extensions must be a non-empty string")
     paths = PathConfig(
         facts=_string(paths_payload, "facts", "paths"),
         decisions=_string(paths_payload, "decisions", "paths"),
         state=_string(paths_payload, "state", "paths"),
-        metadata=_string(paths_payload, "metadata", "paths"),
+        metadata=metadata_path,
         backups=_string(paths_payload, "backups", "paths"),
         migrations=_string(paths_payload, "migrations", "paths"),
+        extensions=extensions_path,
     )
 
     memory = _mapping(payload.get("memory"), "memory")
@@ -276,6 +289,7 @@ def load_config(path: str | Path) -> ProjectConfig:
         "metadata": config.resolve(paths.metadata),
         "backups": config.resolve(paths.backups),
         "migrations": config.resolve(paths.migrations),
+        "extensions": config.resolve(paths.extensions),
     }
     _validate_path_topology(config.source, resolved)
     return config
@@ -300,13 +314,18 @@ def _validate_path_topology(source: Path, paths: dict[str, Path]) -> None:
         raise ConfigurationError(
             "configured data path must not replace stateweave.toml"
         )
-    for name in ("backups", "migrations"):
+    for name in ("backups", "migrations", "extensions"):
         if paths[name] == paths["metadata"] or not paths[name].is_relative_to(
             paths["metadata"]
         ):
             raise ConfigurationError(f"paths.{name} must be a child of paths.metadata")
-    if _overlaps(paths["backups"], paths["migrations"]):
-        raise ConfigurationError("paths.backups and paths.migrations must not overlap")
+    internal_names = ("backups", "migrations", "extensions")
+    for index, left in enumerate(internal_names):
+        for right in internal_names[index + 1 :]:
+            if _overlaps(paths[left], paths[right]):
+                raise ConfigurationError(
+                    f"paths.{left} and paths.{right} must not overlap"
+                )
 
 
 def render_default_config(project_id: str, project_name: str) -> str:
@@ -330,6 +349,7 @@ state = "memory/state/current.json"
 metadata = ".stateweave"
 backups = ".stateweave/backups"
 migrations = ".stateweave/migrations"
+extensions = ".stateweave/extensions"
 
 [memory]
 default_fact_class = "general"

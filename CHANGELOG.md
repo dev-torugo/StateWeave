@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Added deterministic query, budgeted `ContextBundle` compilation, content
+  warnings, conflicts, revision hashes, and a rebuildable derived index.
+- Added idempotent candidate capture, human-gated promotion, persistent
+  workflow/orchestration episodes, context-bound receipts/evaluations, and
+  evidence-bound `MutationPlan` write-back for facts, decisions, and state.
+- Added durable mutation journals, optimistic SHA-256 preconditions,
+  idempotency receipts, abrupt-process recovery, and fingerprint-bound stale
+  lock recovery commands.
+- Made record and extension layouts fail closed on unexpected entries and
+  included opaque extension artifacts in verified backup/restore.
+- Added bounded content-policy hooks, obvious-secret blocking, persistent
+  instruction warnings, multiprocess concurrency tests, and a versioned
+  context benchmark.
 - Began local clean-room extraction.
 - Defined the memory-core vertical-slice contract.
 - Integrated official Draft 2020-12 validation into configuration, audit,

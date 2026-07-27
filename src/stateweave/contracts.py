@@ -15,6 +15,17 @@ from stateweave.core.errors import ContractError
 from stateweave.core.schema import FORMAT_CHECKER
 
 MODULE_SCHEMAS = {
+    "stateweave.continuity": (
+        "episodic-ledger.schema.json",
+        "memory-candidate.schema.json",
+        "mutation-plan.schema.json",
+    ),
+    "stateweave.context": (
+        "context-bundle.schema.json",
+        "context-index.schema.json",
+        "memory-query-result.schema.json",
+        "memory-query.schema.json",
+    ),
     "stateweave.orchestration": (
         "evaluation.schema.json",
         "execution-receipt.schema.json",

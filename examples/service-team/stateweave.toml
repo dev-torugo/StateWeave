@@ -11,6 +11,7 @@ state = "memory/state/current.json"
 metadata = ".stateweave"
 backups = ".stateweave/backups"
 migrations = ".stateweave/migrations"
+extensions = ".stateweave/extensions"
 
 [memory]
 default_fact_class = "general"

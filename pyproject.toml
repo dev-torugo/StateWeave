@@ -38,6 +38,8 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "stateweave.core" = ["schemas/*.json"]
+"stateweave.context" = ["schemas/*.json"]
+"stateweave.continuity" = ["schemas/*.json"]
 "stateweave.orchestration" = ["schemas/*.json"]
 "stateweave.policy" = ["schemas/*.json"]
 "stateweave.workflow" = ["schemas/*.json"]

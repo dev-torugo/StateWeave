@@ -15,8 +15,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, ContextManager
 
-from stateweave.core.config import ProjectConfig
-from stateweave.core.errors import BackupError, PathBoundaryError
+from stateweave.core.config import ProjectConfig, load_config
+from stateweave.core.errors import BackupError, PathBoundaryError, StateWeaveError
 from stateweave.core.io import (
     atomic_write_bytes,
     canonical_json_bytes,
@@ -24,6 +24,7 @@ from stateweave.core.io import (
     sha256_bytes,
 )
 from stateweave.core.locking import WriterLock
+from stateweave.core.layout import inspect_store_layout
 
 MANIFEST_NAME = "STATEWEAVE-BACKUP.json"
 MAX_BACKUP_ENTRY_BYTES = 16 * 1024 * 1024
@@ -44,11 +45,14 @@ def _reject_json_constant(value: str) -> None:
 
 
 def _project_files(config: ProjectConfig) -> list[Path]:
-    files = [config.source]
-    files.extend(sorted(config.facts_dir.glob("*.json")))
-    files.extend(sorted(config.decisions_dir.glob("*.json")))
-    if config.state_file.is_file():
-        files.append(config.state_file)
+    layout = inspect_store_layout(config)
+    if layout.errors:
+        raise BackupError("invalid memory store layout: " + "; ".join(layout.errors))
+    files = [
+        config.source,
+        *(path for _, path in layout.record_paths),
+        *_extension_files(config),
+    ]
     unique: dict[str, Path] = {}
     for path in files:
         if path.is_symlink():
@@ -58,6 +62,34 @@ def _project_files(config: ProjectConfig) -> list[Path]:
         relative = path.resolve().relative_to(config.root.resolve()).as_posix()
         unique[relative] = path
     return [unique[key] for key in sorted(unique)]
+
+
+def _extension_files(config: ProjectConfig) -> list[Path]:
+    """Discover opaque extension artifacts without following symlinks."""
+
+    root = config.extensions_dir
+    if not root.exists():
+        return []
+    if root.is_symlink() or not root.is_dir():
+        raise BackupError(f"extensions path must be a real directory: {root}")
+    files: list[Path] = []
+    pending = [root]
+    while pending:
+        directory = pending.pop()
+        try:
+            entries = sorted(directory.iterdir(), key=lambda path: path.name)
+        except OSError as exc:
+            raise BackupError(f"cannot inspect extension directory {directory}: {exc}")
+        for entry in entries:
+            if entry.is_symlink():
+                raise BackupError(f"extension artifact may not be a symlink: {entry}")
+            if entry.is_dir():
+                pending.append(entry)
+            elif entry.is_file():
+                files.append(entry)
+            else:
+                raise BackupError(f"extension artifact must be a file: {entry}")
+    return files
 
 
 def _manifest(
@@ -217,6 +249,37 @@ def _destination_is_empty(destination: Path) -> bool:
     )
 
 
+def _prepare_restored_project(
+    staging: Path,
+    manifest: dict[str, Any],
+) -> None:
+    """Validate restored configuration and materialize canonical empty dirs."""
+
+    try:
+        config = load_config(staging)
+    except StateWeaveError as exc:
+        raise BackupError(f"restored project configuration is invalid: {exc}") from exc
+    if manifest.get("project_id") != config.project_id:
+        raise BackupError(
+            "backup manifest project_id does not match restored configuration"
+        )
+    directories = (
+        config.facts_dir,
+        config.decisions_dir,
+        config.state_file.parent,
+        config.metadata_dir,
+        config.metadata_dir / "transactions",
+        config.backups_dir,
+        config.migrations_dir,
+        config.extensions_dir,
+    )
+    try:
+        for directory in directories:
+            directory.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise BackupError(f"cannot materialize restored project layout: {exc}") from exc
+
+
 def restore_backup(
     backup_path: str | Path,
     destination: str | Path,
@@ -244,6 +307,7 @@ def restore_backup(
             if not path.is_relative_to(staging):
                 raise BackupError(f"restore path escapes destination: {relative}")
             atomic_write_bytes(path, payload)
+        _prepare_restored_project(staging, manifest)
         if target_existed:
             target.rmdir()
         try:

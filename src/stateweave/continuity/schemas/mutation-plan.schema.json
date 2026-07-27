@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:continuity:mutation-plan:1",
+  "title": "StateWeave governed write-back mutation plan 1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "status",
+    "source_receipt_id",
+    "evaluation_id",
+    "context_sha256",
+    "requires_human",
+    "created_at",
+    "changes",
+    "reviewer_role",
+    "applied_at",
+    "transaction_id",
+    "result_sha256_by_id"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "mutation_plan"},
+    "id": {"type": "string", "pattern": "^MPL-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"},
+    "status": {"enum": ["proposed", "applied", "rejected"]},
+    "source_receipt_id": {"type": "string", "pattern": "^RCP-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"},
+    "evaluation_id": {"type": "string", "pattern": "^EVL-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"},
+    "context_sha256": {"$ref": "#/$defs/sha256"},
+    "requires_human": {"type": "boolean"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "changes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10000,
+      "items": {
+        "type": "object",
+        "required": [
+          "operation",
+          "record_id",
+          "expected_sha256",
+          "proposed_record_sha256",
+          "proposed_record"
+        ],
+        "properties": {
+          "operation": {"enum": ["create", "update", "supersede", "state_update"]},
+          "record_id": {"$ref": "#/$defs/recordId"},
+          "expected_sha256": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]},
+          "proposed_record_sha256": {"$ref": "#/$defs/sha256"},
+          "proposed_record": {"type": "object"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "reviewer_role": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9-]{1,63}$"},
+    "applied_at": {"type": ["string", "null"], "format": "date-time"},
+    "transaction_id": {"type": ["string", "null"], "pattern": "^IDEM-[a-f0-9]{64}$"},
+    "result_sha256_by_id": {
+      "type": ["object", "null"],
+      "propertyNames": {"$ref": "#/$defs/recordId"},
+      "additionalProperties": {"$ref": "#/$defs/sha256"}
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "applied"}}},
+      "then": {
+        "properties": {
+          "reviewer_role": {"type": "string"},
+          "applied_at": {"type": "string"},
+          "transaction_id": {"type": "string"},
+          "result_sha256_by_id": {"type": "object"}
+        }
+      }
+    }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "recordId": {
+      "type": "string",
+      "pattern": "^(?:(?:FCT|DEC)-[A-Za-z0-9][A-Za-z0-9._-]{1,127}|STATE-current)$"
+    }
+  }
+}

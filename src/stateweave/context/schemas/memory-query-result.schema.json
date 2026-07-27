@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:context:memory-query-result:1",
+  "title": "StateWeave memory query result 1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "query_sha256",
+    "snapshot_sha256",
+    "as_of",
+    "matches",
+    "warnings",
+    "conflicts",
+    "excluded"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "memory_query_result"},
+    "query_sha256": {"$ref": "#/$defs/sha256"},
+    "snapshot_sha256": {"$ref": "#/$defs/sha256"},
+    "as_of": {"type": "string", "format": "date"},
+    "matches": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {"$ref": "#/$defs/match"}
+    },
+    "warnings": {"$ref": "#/$defs/warnings"},
+    "conflicts": {"$ref": "#/$defs/conflicts"},
+    "excluded": {"$ref": "#/$defs/excluded"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "recordId": {
+      "type": "string",
+      "pattern": "^(?:FCT|DEC|STATE)-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"
+    },
+    "match": {
+      "type": "object",
+      "required": [
+        "id",
+        "record_kind",
+        "status",
+        "classification",
+        "revision_sha256",
+        "source_path",
+        "score",
+        "reasons"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/recordId"},
+        "record_kind": {"enum": ["fact", "decision", "state"]},
+        "status": {"type": ["string", "null"]},
+        "classification": {"type": "string"},
+        "revision_sha256": {"$ref": "#/$defs/sha256"},
+        "source_path": {"type": "string", "minLength": 1, "maxLength": 512},
+        "score": {"type": "integer"},
+        "reasons": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 300}
+        }
+      },
+      "additionalProperties": false
+    },
+    "warning": {
+      "type": "object",
+      "required": ["code", "record_id", "message"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1, "maxLength": 100},
+        "record_id": {"$ref": "#/$defs/recordId"},
+        "message": {"type": "string", "minLength": 1, "maxLength": 1000}
+      },
+      "additionalProperties": false
+    },
+    "warnings": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/warning"}
+    },
+    "conflict": {
+      "type": "object",
+      "required": ["left_id", "right_id", "subject", "predicate", "scope"],
+      "properties": {
+        "left_id": {"$ref": "#/$defs/recordId"},
+        "right_id": {"$ref": "#/$defs/recordId"},
+        "subject": {"type": "string"},
+        "predicate": {"type": "string"},
+        "scope": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/conflict"}
+    },
+    "excluded": {
+      "type": "object",
+      "required": ["filtered", "no_match", "item_limit", "content_budget", "content_policy"],
+      "properties": {
+        "filtered": {"type": "integer", "minimum": 0},
+        "no_match": {"type": "integer", "minimum": 0},
+        "item_limit": {"type": "integer", "minimum": 0},
+        "content_budget": {"type": "integer", "minimum": 0},
+        "content_policy": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    }
+  }
+}
