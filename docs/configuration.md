@@ -90,7 +90,10 @@ lock_stale_after_seconds = 900
 
 Stale lock age is diagnostic. Expiration alone never transfers ownership or
 deletes a lock. `lock-status` returns the owner digest and token required by
-the explicitly confirmed `recover-lock` operation.
+the explicitly confirmed `recover-lock` operation. `lock_timeout_seconds`
+bounds both acquisition and retry of transient release-time sharing
+violations. Waiting writers inspect owner evidence only when the acquisition
+deadline expires; other release failures still fail closed.
 
 ## Policy
 

@@ -84,15 +84,24 @@ a core dependency.
 Definitive licensing, additional remotes, tags, releases, package publication,
 or a maturity claim beyond proven evidence requires a separate human gate.
 
-## Post-extraction continuity checkpoint — 2026-07-27
+## Post-extraction continuity checkpoints — 2026-07-27
 
-The local worktree now implements the next vertical slice described in
-`docs/technical-assessment-2026-07-27.md`: deterministic retrieval and context,
-idempotent candidates, persistent episodes/receipts/evaluations, governed
-write-back, crash recovery, content policy, derived indexing, concurrency
-tests, and a versioned benchmark. Current evidence and remaining external
-gates are recorded in `docs/verification-report-2026-07-27.md`.
+The continuity slice described in
+`docs/technical-assessment-2026-07-27.md` landed through PR #1 at `c3cf585`
+after all ten hosted matrix/static jobs passed. It provides deterministic
+retrieval and context, idempotent candidates, persistent
+episodes/receipts/evaluations, governed write-back, crash recovery, content
+policy, derived indexing, concurrency tests, and a versioned benchmark.
 
-This checkpoint does not expand the publication authorization. Commit, push,
-hosted CI, tags, releases, package publication, definitive licensing, support,
-and maturity claims retain their existing gates.
+The next repository-native slice adds the Gate E host boundary:
+
+- immutable Codex session preparation bound to policy, manifest, worker, and
+  exact context;
+- explicit approval references without adapter-granted authority;
+- host-reported effect, receipt, and evaluation reconciliation;
+- closed-world adapter audit and persistent orchestration binding;
+- CLI and integration guidance.
+
+These checkpoints do not expand publication authorization. Tags, releases,
+package publication, definitive licensing, support, and maturity claims retain
+their existing human gates.

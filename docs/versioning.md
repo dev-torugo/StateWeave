@@ -38,8 +38,8 @@ build. Actions are pinned to immutable revisions and checkout does not persist
 credentials.
 
 The public development repository has hosted evidence for the publication
-snapshot: Linux and macOS matrix jobs passed, while the first Windows run found
-and led to a path-validation ordering fix. That evidence is historical and
-does not cover the current uncommitted continuity changes. No operating system
-is therefore declared officially supported until the current revision runs the
-complete hosted matrix.
+snapshot and the continuity merge at `c3cf585`: the latter passed all nine
+Linux, macOS, and Windows Python 3.11–3.13 matrix jobs plus the static/build
+job in PR #1. Later changes require their own attached run. Passing the matrix
+is necessary evidence but does not, by itself, create an operating-system
+support or maturity claim.

@@ -22,7 +22,12 @@ untrusted MemoryCandidate -- content/schema policy --> human review
                                 v
                   hash-bound ContextBundle (budgeted)
                                 |
+              Codex session preparation (never authorizes)
+                                |
                       host execution remains external
+                                |
+                                v
+ host-reported receipt + evaluation reconciliation
                                 |
                                 v
  task + manifest + worker + receipt + evaluation episode
@@ -103,6 +108,14 @@ must reference:
 An evaluation must reference that receipt. The continuity audit combines all
 episodes and runs the existing workflow/orchestration semantic validators.
 
+The optional Codex bridge makes this boundary directly consumable without
+performing execution. `codex-prepare` stores an immutable session containing
+the exact `ContextBundle`, task, manifest, worker, policy decisions, approval
+references, and a dispatch whose `execution_authorized` value is always
+`false`. `codex-observe` accepts complete host-reported receipt/evaluation
+documents and refuses missing, drifted, denied, or unaccounted effects. See
+`docs/codex-bridge.md`.
+
 ## Mutation plans and write-back
 
 A `MutationPlan` is a preview, not permission. It binds a stored context,
@@ -134,6 +147,7 @@ transaction receipt.
 | proposed plan results exist | `audit-continuity` warning | rerun `apply-plan` to reconcile its receipt |
 | index is stale or invalid | `index-status` | run `index-build`; canonical memory is unchanged |
 | malformed continuity artifact | `audit-continuity` error | preserve evidence and repair/remove only with human review |
+| Codex session/observation drift | `audit-codex` error | preserve the artifact and reconcile from the original host evidence |
 
 Neither stale age nor a partial result transfers authority automatically.
 Tests kill a real subprocess after its first record replacement and prove that
@@ -150,6 +164,7 @@ After restore, run both:
 ```bash
 stateweave audit --config ./restored-memory
 stateweave audit-continuity --config ./restored-memory
+stateweave audit-codex --config ./restored-memory
 ```
 
 The derived index may also be deleted and rebuilt; it is not canonical data.

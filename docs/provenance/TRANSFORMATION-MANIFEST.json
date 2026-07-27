@@ -188,6 +188,48 @@
         "docs/decisions/ADR-0002-continuity-and-context-boundary.md"
       ],
       "notes": "Implemented locally from the public development codebase with new synthetic fixtures. No operational record, prompt, chat, receipt, credential, PII, raw log, customer artifact, or private-source implementation was copied."
+    },
+    {
+      "date": "2026-07-27",
+      "base_revision": "c3cf585f60b077edb610216f6f7eb77bb2e91cfe",
+      "mode": "repository_native_implementation",
+      "private_source_material_used": false,
+      "synthetic_examples_only": true,
+      "inputs": [
+        "current StateWeave adapter, runtime, policy, context, continuity, and orchestration contracts",
+        "Gate E in docs/technical-assessment-2026-07-27.md",
+        "direct project-owner implementation request"
+      ],
+      "destinations": [
+        "src/stateweave/adapters/codex_bridge.py",
+        "src/stateweave/adapters/schemas",
+        "src/stateweave/orchestration/schemas/execution-receipt.schema.json",
+        "tests/test_codex_bridge.py",
+        "docs/codex-bridge.md",
+        "docs/decisions/ADR-0003-codex-host-bridge.md",
+        "docs/verification-report-host-bridge-2026-07-27.md"
+      ],
+      "notes": "Implemented from the merged public StateWeave codebase with synthetic host, policy, task, manifest, receipt, and evaluation fixtures. No operational session, prompt, transcript, credential, PII, customer artifact, private receipt, or external-system implementation was copied."
+    },
+    {
+      "date": "2026-07-27",
+      "base_revision": "0084355c335fdab308d2e6296e6b1f831a278e3f",
+      "mode": "repository_native_ci_remediation",
+      "private_source_material_used": false,
+      "synthetic_examples_only": true,
+      "inputs": [
+        "current StateWeave writer-lock contract",
+        "public GitHub pull request 2 hosted CI failure evidence"
+      ],
+      "destinations": [
+        "src/stateweave/core/locking.py",
+        "tests/test_locking.py",
+        "CHANGELOG.md",
+        "docs/configuration.md",
+        "docs/security.md",
+        "docs/verification-report-host-bridge-2026-07-27.md"
+      ],
+      "notes": "Implemented from the public repository and public hosted-check diagnostics with synthetic sharing-violation tests. No operational record, credential, PII, customer artifact, private log, or external-system implementation was copied."
     }
   ],
   "excluded_classes": [

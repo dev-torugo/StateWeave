@@ -17,6 +17,8 @@ outside memory-core and require a separately authorized adapter.
 - idempotency keys are stored only as SHA-256 digests;
 - optimistic record hashes reject stale writers;
 - a writer owns an unpredictable token in an atomically created lock directory;
+- waiting writers avoid repeatedly opening owner evidence, and release retries
+  only transient sharing violations within the configured lock timeout;
 - a stale lock is reported but never stolen automatically; recovery requires
   the observed owner digest, token, stale policy, and explicit confirmation;
 - canonical record areas reject nested directories, non-JSON entries, special
@@ -43,7 +45,8 @@ backlinks, and structured conflicts.
 
 Valid JSON is still untrusted data. The optional content-policy boundary runs a
 bounded traversal at candidate ingress, promotion, mutation-plan handling, and
-retrieval. The built-in baseline:
+retrieval. Codex session preparation and observation ingress use the same
+boundary. The built-in baseline:
 
 - blocks obvious credential assignments and private-key markers;
 - never includes the matched credential value in an error;
@@ -71,8 +74,10 @@ data in examples or tests.
   hardware, or physical disk failure mode.
 - Structured conflict detection compares declared claim keys and values; it is
   not natural-language truth inference.
-- The passive runtime adapter prepares documents but does not secure or attest
-  a host runtime.
+- The Codex bridge prepares and reconciles documents but does not launch,
+  secure, independently attest, or authorize a host runtime. An approval
+  reference is a host-supplied evidence locator, not proof verified by
+  StateWeave.
 - In-memory telemetry avoids implicit persistence but cannot enforce a
   consumer's downstream handling.
 - The current project has not completed hosted multi-process stress testing on

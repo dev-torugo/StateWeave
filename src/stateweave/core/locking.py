@@ -346,9 +346,9 @@ class WriterLock(AbstractContextManager["WriterLock"]):
                 self.acquired = True
                 return self
             except FileExistsError:
-                age = self._age_seconds()
-                stale = age is not None and age > self.stale_after_seconds
                 if time.monotonic() >= deadline:
+                    age = self._age_seconds()
+                    stale = age is not None and age > self.stale_after_seconds
                     suffix = (
                         f"; existing lock is stale by policy ({age:.1f}s)"
                         if stale
@@ -380,8 +380,37 @@ class WriterLock(AbstractContextManager["WriterLock"]):
             raise LockUnavailableError(
                 f"writer lock ownership changed: {self.lock_dir}"
             )
-        self.owner_file.unlink()
-        self.lock_dir.rmdir()
+
+        deadline = time.monotonic() + self.timeout_seconds
+        while True:
+            try:
+                self.owner_file.unlink()
+                break
+            except PermissionError as exc:
+                if time.monotonic() >= deadline:
+                    raise LockUnavailableError(
+                        f"cannot release writer lock owner: {self.lock_dir}"
+                    ) from exc
+                time.sleep(self.poll_interval)
+            except OSError as exc:
+                raise LockUnavailableError(
+                    f"cannot release writer lock owner: {self.lock_dir}"
+                ) from exc
+
+        while True:
+            try:
+                self.lock_dir.rmdir()
+                break
+            except PermissionError as exc:
+                if time.monotonic() >= deadline:
+                    raise LockUnavailableError(
+                        f"cannot release writer lock directory: {self.lock_dir}"
+                    ) from exc
+                time.sleep(self.poll_interval)
+            except OSError as exc:
+                raise LockUnavailableError(
+                    f"cannot release writer lock directory: {self.lock_dir}"
+                ) from exc
         self.acquired = False
 
     def __enter__(self) -> "WriterLock":

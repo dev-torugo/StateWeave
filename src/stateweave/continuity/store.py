@@ -533,6 +533,27 @@ def append_orchestration_documents(
     return _append_episode(config, "orchestration", documents)
 
 
+def load_orchestration_documents(
+    config: ProjectConfig,
+) -> tuple[dict[str, Any], ...]:
+    """Load a validated, context-bound orchestration snapshot."""
+
+    with project_writer_lock(config):
+        documents, errors = _load_episode_documents(config, "orchestration")
+        report = audit_execution(documents)
+        errors.extend(report.errors)
+        errors.extend(_receipt_context_errors(config, documents))
+        if errors:
+            raise RecordError("; ".join(sorted(set(errors))))
+        return tuple(
+            dict(document)
+            for document in sorted(
+                documents,
+                key=lambda item: (str(item.get("id", "")), str(item)),
+            )
+        )
+
+
 def append_workflow_documents(
     config: ProjectConfig,
     documents: list[dict[str, Any]],

@@ -85,15 +85,24 @@ Concrete model identifiers are observations permitted only in receipts.
 and an allow-list of effects. `RuntimeRegistry` registers adapters explicitly;
 there is no import-time discovery or dispatch.
 
-`stateweave.adapters.CodexAdapter` prepares a passive host document. It does not
-select a model, launch a task, contact a service, or authorize execution. The
-host remains responsible for execution and for producing a receipt.
+`stateweave.adapters.CodexAdapter` prepares a passive host document. The
+`prepare_codex_session` bridge composes it with a policy pack, deterministic
+context, task, manifest, and worker. It persists the exact prepared session but
+still does not select a model, launch a task, contact a service, or authorize
+execution.
+
+After external execution, `record_codex_observation` accepts a complete
+host-reported receipt and evaluation. It never invents missing evidence.
+Successful effect observations must match the session's policy decision and
+approval reference. `audit_codex_bridge` verifies closed-world adapter storage,
+hash bindings, stored context, and orchestration-ledger references. See
+`docs/codex-bridge.md` for the public CLI flow.
 
 To add an adapter:
 
 1. implement the `RuntimeAdapter` protocol;
 2. keep platform imports inside the adapter package;
-3. make `prepare` deterministic and side-effect free;
+3. make envelope preparation deterministic and external-effect free;
 4. record native runtime and model details only as receipt observations;
 5. add positive, negative, and adversarial tests;
 6. document every new external authority boundary.

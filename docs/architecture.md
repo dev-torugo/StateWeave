@@ -3,10 +3,11 @@
 ## Dependency direction
 
 ```text
-applications ─┬─> continuity ─┬─> context retrieval/index ─┐
-              │               ├─> workflow/orchestration ──┤
-              │               └─> content policy hooks ────┤
-              ├─> runtime adapters ────────────────────────┤
+applications ─┬─> host bridge ─┬─> continuity ─────────────┐
+              │                ├─> context retrieval/index ┤
+              │                ├─> runtime adapters ───────┤
+              │                └─> content policy hooks ───┤
+              ├─> workflow/orchestration ─────────────────┤
 policy packs ─┴────────────────────────────────────────────┤
                                                           v
                                                     memory-core
@@ -37,7 +38,7 @@ depend on core; core never imports them.
 - `stateweave.runtime`: dispatch envelopes, adapter protocol, and explicit
   registry;
 - `stateweave.adapters`: runtime-specific translations, including the passive
-  Codex adapter;
+  Codex envelope adapter and persistent host bridge;
 - `stateweave.telemetry`: opt-in allow-listed buffer and read-only observer;
 - `stateweave.policy`: project-owned roles, authority effects, human gates,
   routing ceilings, and telemetry settings.
@@ -95,3 +96,12 @@ stored `ContextBundle` SHA-256. A mutation plan additionally binds a passing
 evaluation and uses the same core transaction path for fact, decision, and
 `STATE-current` write-back. Loading or validating an adapter never grants
 authority for an external effect.
+
+The Codex bridge composes optional modules without reversing this dependency.
+Preparation validates task, manifest, worker, policy, approval references, and
+content; compiles and persists the exact context; and writes an immutable
+`SES-<sha256>` artifact. The embedded dispatch still contains
+`execution_authorized: false`. Reconciliation accepts a full host-reported
+receipt and evaluation, verifies every requested effect against the stored
+policy decision, appends the orchestration episode, and writes an immutable
+`OBS-<sha256>` binding. No adapter path enters `stateweave.core`.

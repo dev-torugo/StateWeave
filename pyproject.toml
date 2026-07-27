@@ -37,6 +37,7 @@ stateweave = "stateweave.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
+"stateweave.adapters" = ["schemas/*.json"]
 "stateweave.core" = ["schemas/*.json"]
 "stateweave.context" = ["schemas/*.json"]
 "stateweave.continuity" = ["schemas/*.json"]

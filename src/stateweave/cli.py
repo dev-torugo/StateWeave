@@ -9,6 +9,11 @@ from datetime import date
 from pathlib import Path
 from typing import Any, Sequence
 
+from stateweave.adapters import (
+    audit_codex_bridge,
+    prepare_codex_session,
+    record_codex_observation,
+)
 from stateweave.context import (
     build_context_index,
     compile_context,
@@ -35,6 +40,7 @@ from stateweave.core.locking import inspect_writer_lock, recover_stale_writer_lo
 from stateweave.core.migrations import apply_migration, plan_migration
 from stateweave.core.project import initialize_project, recover_record_transaction
 from stateweave.core.transactions import inspect_transaction_store
+from stateweave.policy import load_policy_pack
 
 
 def _json(payload: Any) -> str:
@@ -56,6 +62,18 @@ def _config(value: str) -> Any:
 
 def _json_file(value: str) -> Any:
     return read_json(Path(value), max_bytes=16 * 1024 * 1024)
+
+
+def _key_value_pairs(values: Sequence[str], *, label: str) -> dict[str, str]:
+    pairs: dict[str, str] = {}
+    for value in values:
+        key, separator, item = value.partition("=")
+        if not separator or not key or not item:
+            raise StateWeaveError(f"{label} must use EFFECT=REFERENCE")
+        if key in pairs:
+            raise StateWeaveError(f"{label} contains duplicate effect {key!r}")
+        pairs[key] = item
+    return pairs
 
 
 def _add_memory_query_arguments(parser: argparse.ArgumentParser) -> None:
@@ -307,6 +325,43 @@ def build_parser() -> argparse.ArgumentParser:
     )
     index_status.add_argument("--config", default=".")
     index_status.add_argument("--as-of", default=date.today().isoformat())
+
+    codex_prepare = subcommands.add_parser(
+        "codex-prepare",
+        help="persist a context-bound Codex host session without executing it",
+    )
+    codex_prepare.add_argument("task")
+    codex_prepare.add_argument("input_manifest")
+    codex_prepare.add_argument("worker")
+    codex_prepare.add_argument("query")
+    codex_prepare.add_argument("--config", default=".")
+    codex_prepare.add_argument("--policy", required=True)
+    codex_prepare.add_argument("--role", required=True)
+    codex_prepare.add_argument("--created-at", required=True)
+    codex_prepare.add_argument("--requested-effect", action="append", default=[])
+    codex_prepare.add_argument(
+        "--approval",
+        action="append",
+        default=[],
+        metavar="EFFECT=REFERENCE",
+    )
+
+    codex_observe = subcommands.add_parser(
+        "codex-observe",
+        help="reconcile a host-reported receipt and evaluation with a Codex session",
+    )
+    codex_observe.add_argument("session_id")
+    codex_observe.add_argument("receipt")
+    codex_observe.add_argument("evaluation")
+    codex_observe.add_argument("--config", default=".")
+    codex_observe.add_argument("--observer", required=True)
+    codex_observe.add_argument("--observed-at", required=True)
+
+    codex_audit = subcommands.add_parser(
+        "audit-codex",
+        help="audit Codex sessions, observations, and ledger bindings",
+    )
+    codex_audit.add_argument("--config", default=".")
     return parser
 
 
@@ -423,6 +478,56 @@ def _run(args: argparse.Namespace) -> int:
         status = inspect_context_index(config, as_of=as_of)
         print(_json(status))
         return 0 if status["valid"] else 1
+    if args.command == "codex-prepare":
+        task = _json_file(args.task)
+        input_manifest = _json_file(args.input_manifest)
+        worker = _json_file(args.worker)
+        query = _json_file(args.query)
+        if any(
+            not isinstance(document, dict)
+            for document in (task, input_manifest, worker, query)
+        ):
+            raise StateWeaveError(
+                "Codex task, manifest, worker, and query files must contain objects"
+            )
+        session = prepare_codex_session(
+            config,
+            policy=load_policy_pack(args.policy),
+            query=query,
+            task=task,
+            input_manifest=input_manifest,
+            worker=worker,
+            role=args.role,
+            requested_effects=tuple(args.requested_effect),
+            approval_references=_key_value_pairs(
+                args.approval,
+                label="--approval",
+            ),
+            created_at=args.created_at,
+        )
+        print(_json(session))
+        return 0
+    if args.command == "codex-observe":
+        receipt = _json_file(args.receipt)
+        evaluation = _json_file(args.evaluation)
+        if not isinstance(receipt, dict) or not isinstance(evaluation, dict):
+            raise StateWeaveError(
+                "Codex receipt and evaluation files must contain objects"
+            )
+        observation = record_codex_observation(
+            config,
+            args.session_id,
+            receipt=receipt,
+            evaluation=evaluation,
+            observer=args.observer,
+            observed_at=args.observed_at,
+        )
+        print(_json(observation))
+        return 0
+    if args.command == "audit-codex":
+        bridge_report = audit_codex_bridge(config)
+        print(_json(bridge_report.as_dict()))
+        return 0 if bridge_report.ok else 1
     if args.command in {"audit", "review", "backlinks"}:
         memory_report = audit_repository(
             config, today=_today(getattr(args, "today", None))

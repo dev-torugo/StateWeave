@@ -13,8 +13,8 @@ repository does not currently grant usage or redistribution rights.
 
 ## Current development checkpoint
 
-The current local worktree implements a runtime-neutral continuity slice on
-top of the governed `memory-core`:
+The current codebase implements a runtime-neutral continuity slice and an
+explicit Codex host bridge on top of the governed `memory-core`:
 
 - versioned project configuration;
 - facts, decisions, and current state;
@@ -31,6 +31,8 @@ top of the governed `memory-core`:
 - untrusted candidates, human-gated promotion, persistent workflow and
   orchestration episodes, receipts, evaluations, and governed write-back;
 - bounded content-policy hooks for ingress and retrieval;
+- immutable, context-bound Codex session preparation and host-reported
+  receipt/evaluation reconciliation;
 - synthetic multi-process, abrupt-exit, backup/restore, and performance tests;
 - positive, negative, and adversarial tests.
 
@@ -49,17 +51,20 @@ See `docs/project-plan.md` for the full extraction sequence and gates.
 - orchestration DAGs, deterministic routing, manifests, receipts, and
   evaluations;
 - runtime-neutral dispatch envelopes and explicit adapter registry;
-- passive Codex adapter;
+- passive Codex envelope adapter plus a persistent, policy-aware host bridge;
 - opt-in allow-listed telemetry and read-only observation;
 - project-owned policy packs with non-bypassable human gates.
 
-See `docs/continuity.md` for the end-to-end lifecycle, `docs/performance.md`
-for measured local evidence, and `docs/extensions.md` for extension and
-authority contracts.
+See `docs/continuity.md` for the end-to-end lifecycle,
+`docs/codex-bridge.md` for the host integration, `docs/performance.md` for
+measured local evidence, and `docs/extensions.md` for extension and authority
+contracts.
 
 The local extraction evidence is recorded in
 `docs/verification-report-2026-07-25.md`; the public-repository authorization
 and remaining release gates are recorded in
-`docs/publication-report-2026-07-26.md`. The current continuity implementation
-is local worktree evidence until a separately authorized commit/push and hosted
-CI run occur; see `docs/verification-report-2026-07-27.md`.
+`docs/publication-report-2026-07-26.md`. The continuity implementation landed
+through PR #1 with its hosted matrix green; its historical evidence is in
+`docs/verification-report-2026-07-27.md`. Host-bridge evidence and limitations
+are recorded separately in
+`docs/verification-report-host-bridge-2026-07-27.md`.

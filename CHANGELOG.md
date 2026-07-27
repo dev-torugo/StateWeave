@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added an immutable Codex host bridge with policy-aware session preparation,
+  explicit approval references, content-bound dispatch, host-reported
+  receipt/evaluation reconciliation, effect observations, and adapter audit.
 - Added deterministic query, budgeted `ContextBundle` compilation, content
   warnings, conflicts, revision hashes, and a rebuildable derived index.
 - Added idempotent candidate capture, human-gated promotion, persistent
@@ -10,6 +13,8 @@
 - Added durable mutation journals, optimistic SHA-256 preconditions,
   idempotency receipts, abrupt-process recovery, and fingerprint-bound stale
   lock recovery commands.
+- Made writer-lock polling and release resilient to transient Windows sharing
+  violations without weakening ownership checks or stale-lock recovery.
 - Made record and extension layouts fail closed on unexpected entries and
   included opaque extension artifacts in verified backup/restore.
 - Added bounded content-policy hooks, obvious-secret blocking, persistent
