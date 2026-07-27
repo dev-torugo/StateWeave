@@ -61,7 +61,10 @@ def initialize_project(
         if not root.is_dir():
             raise RecordError(f"project destination is not a directory: {root}")
         if next(root.iterdir(), None) is not None:
-            raise RecordError(f"project destination is not empty: {root}")
+            raise RecordError(
+                f"project destination is not empty: {root}; "
+                "use `stateweave adopt` for an existing project"
+            )
     root.mkdir(parents=True, exist_ok=True)
     config_path = root / CONFIG_FILENAME
     atomic_write_bytes(

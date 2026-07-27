@@ -179,7 +179,7 @@ def _validate_candidate(candidate: dict[str, Any], source: str | Path) -> list[s
     return sorted(set(errors))
 
 
-def capture_candidate(
+def _prepare_candidate(
     config: ProjectConfig,
     *,
     idempotency_key: str,
@@ -194,8 +194,6 @@ def capture_candidate(
     expected_sha256: str | None = None,
     content_inspector: ContentInspector | None = None,
 ) -> dict[str, Any]:
-    """Capture one untrusted candidate without promoting it to canonical memory."""
-
     _, key_digest = transaction_id_for_key(idempotency_key)
     findings = inspect_content(
         proposed_record,
@@ -240,21 +238,62 @@ def capture_candidate(
         errors.append("candidate update operation requires expected_sha256")
     if errors:
         raise ContractError("; ".join(sorted(set(errors))))
+    return candidate
+
+
+def _persist_candidate_locked(
+    config: ProjectConfig,
+    candidate: dict[str, Any],
+) -> dict[str, Any]:
+    _ensure_store(config)
+    path = _candidate_path(config, candidate["id"])
+    if path.exists():
+        existing = _read_object(path)
+        existing_errors = _validate_candidate(existing, path)
+        if existing_errors:
+            raise RecordError("; ".join(existing_errors))
+        if existing["request_sha256"] != candidate["request_sha256"]:
+            raise RecordError(
+                "candidate idempotency key was reused for a different request"
+            )
+        return existing
+    atomic_write_json(path, candidate)
+    return candidate
+
+
+def capture_candidate(
+    config: ProjectConfig,
+    *,
+    idempotency_key: str,
+    captured_at: str,
+    classification: str,
+    confidence: str,
+    source: dict[str, Any],
+    provenance: dict[str, Any],
+    proposed_record: dict[str, Any],
+    review_required: bool = True,
+    operation: str = "create",
+    expected_sha256: str | None = None,
+    content_inspector: ContentInspector | None = None,
+) -> dict[str, Any]:
+    """Capture one untrusted candidate without promoting it to canonical memory."""
+
+    candidate = _prepare_candidate(
+        config,
+        idempotency_key=idempotency_key,
+        captured_at=captured_at,
+        classification=classification,
+        confidence=confidence,
+        source=source,
+        provenance=provenance,
+        proposed_record=proposed_record,
+        review_required=review_required,
+        operation=operation,
+        expected_sha256=expected_sha256,
+        content_inspector=content_inspector,
+    )
     with project_writer_lock(config):
-        _ensure_store(config)
-        path = _candidate_path(config, candidate["id"])
-        if path.exists():
-            existing = _read_object(path)
-            existing_errors = _validate_candidate(existing, path)
-            if existing_errors:
-                raise RecordError("; ".join(existing_errors))
-            if existing["request_sha256"] != request_sha256:
-                raise RecordError(
-                    "candidate idempotency key was reused for a different request"
-                )
-            return existing
-        atomic_write_json(path, candidate)
-        return candidate
+        return _persist_candidate_locked(config, candidate)
 
 
 def _load_candidate(config: ProjectConfig, identifier: str) -> dict[str, Any]:

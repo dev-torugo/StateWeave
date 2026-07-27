@@ -79,7 +79,7 @@
           "maxItems": 200,
           "items": {
             "type": "string",
-            "pattern": "^(?:CND|RCP|EVL)-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$|^CTX-[a-f0-9]{64}$"
+            "pattern": "^(?:CND|RCP|EVL)-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$|^(?:CTX|CAP)-[a-f0-9]{64}$"
           }
         }
       },
@@ -95,7 +95,7 @@
         "type": "object",
         "required": ["code", "severity", "path", "message"],
         "properties": {
-          "code": {"$ref": "#/$defs/slug"},
+          "code": {"type": "string", "minLength": 1, "maxLength": 100},
           "severity": {"enum": ["warning", "block"]},
           "path": {"type": "string", "minLength": 1, "maxLength": 4096},
           "message": {"type": "string", "minLength": 1, "maxLength": 1000}

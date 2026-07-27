@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:adoption:receipt:1",
+  "title": "StateWeave existing-project adoption receipt 1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "plan_sha256",
+    "receipt_sha256",
+    "project_id",
+    "project_name",
+    "deployment_mode",
+    "config_path",
+    "existing_entry_count",
+    "existing_snapshot_sha256",
+    "preserved_entry_count",
+    "created_paths",
+    "adopted_at"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "adoption_receipt"},
+    "id": {"type": "string", "pattern": "^ADP-[a-f0-9]{64}$"},
+    "plan_sha256": {"$ref": "#/$defs/sha256"},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"},
+    "project_id": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+    "project_name": {"type": "string", "minLength": 1, "maxLength": 200},
+    "deployment_mode": {"const": "sidecar"},
+    "config_path": {"const": ".stateweave-project/stateweave.toml"},
+    "existing_entry_count": {"type": "integer", "minimum": 0},
+    "existing_snapshot_sha256": {"$ref": "#/$defs/sha256"},
+    "preserved_entry_count": {"type": "integer", "minimum": 0},
+    "created_paths": {
+      "type": "array",
+      "items": {"const": ".stateweave-project"},
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "adopted_at": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
