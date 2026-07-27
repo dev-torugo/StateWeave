@@ -15,9 +15,18 @@ from stateweave.core.errors import ContractError
 from stateweave.core.schema import FORMAT_CHECKER
 
 MODULE_SCHEMAS = {
+    "stateweave.adoption": (
+        "adoption-plan.schema.json",
+        "adoption-receipt.schema.json",
+    ),
     "stateweave.adapters": (
         "codex-observation.schema.json",
         "codex-session.schema.json",
+    ),
+    "stateweave.capture": (
+        "capture-checkpoint.schema.json",
+        "capture-envelope.schema.json",
+        "capture-request.schema.json",
     ),
     "stateweave.continuity": (
         "episodic-ledger.schema.json",

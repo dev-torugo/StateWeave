@@ -3,10 +3,10 @@
 ## Dependency direction
 
 ```text
-applications ─┬─> host bridge ─┬─> continuity ─────────────┐
-              │                ├─> context retrieval/index ┤
-              │                ├─> runtime adapters ───────┤
-              │                └─> content policy hooks ───┤
+applications ─┬─> adoption/capture ─> continuity ──────────┐
+              ├─> host bridge ─┬─> context retrieval/index ┤
+              │                ├─> runtime adapters ────────┤
+              │                └─> content policy hooks ────┤
               ├─> workflow/orchestration ─────────────────┤
 policy packs ─┴────────────────────────────────────────────┤
                                                           v
@@ -25,6 +25,10 @@ depend on core; core never imports them.
 
 ## Optional modules
 
+- `stateweave.adoption`: read-only existing-project planning, sidecar
+  materialization, receipt persistence, and unambiguous config discovery;
+- `stateweave.capture`: adapter-neutral capture requests, immutable envelopes,
+  linear checkpoints, candidate bindings, and closed-world audit;
 - `stateweave.workflow`: schema-backed work requests, handoffs, acceptances,
   and lifecycle audit;
 - `stateweave.context`: explainable lexical retrieval, graph expansion,
@@ -96,6 +100,13 @@ stored `ContextBundle` SHA-256. A mutation plan additionally binds a passing
 evaluation and uses the same core transaction path for fact, decision, and
 `STATE-current` write-back. Loading or validating an adapter never grants
 authority for an external effect.
+
+An adopted existing project stores the complete StateWeave project under the
+fixed `.stateweave-project/` sidecar. The adoption plan hashes only a
+name/type inventory, writes nothing by default, and requires its exact digest
+for apply. Capture begins only when a host submits a `CaptureRequest`; it does
+not read the host project. A linear checkpoint prevents cursor forks, while
+each event is forced through the existing review-required candidate boundary.
 
 The Codex bridge composes optional modules without reversing this dependency.
 Preparation validates task, manifest, worker, policy, approval references, and

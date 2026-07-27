@@ -38,8 +38,8 @@ build. Actions are pinned to immutable revisions and checkout does not persist
 credentials.
 
 The public development repository has hosted evidence for the publication
-snapshot and the continuity merge at `c3cf585`: the latter passed all nine
-Linux, macOS, and Windows Python 3.11–3.13 matrix jobs plus the static/build
-job in PR #1. Later changes require their own attached run. Passing the matrix
-is necessary evidence but does not, by itself, create an operating-system
-support or maturity claim.
+snapshot, continuity merge `c3cf585`, and host-bridge merge `4f347b1`. PR #1
+and PR #2 each passed all nine Linux, macOS, and Windows Python 3.11–3.13
+matrix jobs plus the static/build job. Later changes require their own attached
+run. Passing the matrix is necessary evidence but does not, by itself, create
+an operating-system support or maturity claim.

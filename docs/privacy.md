@@ -10,11 +10,20 @@ records, or credentials.
 The optional continuity and adapter stores persist only documents the consumer
 explicitly submits: candidates, context bundles, workflow/orchestration
 episodes, receipts, evaluations, mutation plans, prepared Codex sessions, and
-observation bindings. They do not capture a host session, prompt, transcript,
-or runtime event automatically. Prepared sessions contain the supplied task,
-manifest, worker, policy decisions, approval references, and exact context.
-Runtime and model identifiers may appear only in receipt observations.
-Candidate idempotency keys are represented by digests, not stored in raw form.
+observation bindings. Adoption adds one sidecar but does not scan or copy the
+host project's files; its plan returns only a count and digest of the
+top-level name/type inventory. Capture persists only a request explicitly
+submitted by the host, its envelope, checkpoint, and candidate bindings. These
+modules do not capture a host session, prompt, transcript, repository, raw
+diff, or runtime event automatically. Prepared sessions contain the supplied
+task, manifest, worker, policy decisions, approval references, and exact
+context. Runtime and model identifiers may appear only in receipt
+observations. Candidate idempotency keys are represented by digests, not
+stored in raw form.
+
+StateWeave does not decide whether `.stateweave-project/` belongs in version
+control. The adopting project owns classification, access, ignore, retention,
+backup export, and deletion policy for the sidecar.
 
 Projects should keep content classifications and retention rules appropriate
 to their own jurisdiction and operating context. Configuration supports an

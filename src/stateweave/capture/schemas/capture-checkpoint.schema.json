@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:capture:checkpoint:1",
+  "title": "StateWeave capture source checkpoint 1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "source",
+    "source_sha256",
+    "cursor",
+    "envelope_id",
+    "updated_at",
+    "checkpoint_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "capture_checkpoint"},
+    "id": {"type": "string", "pattern": "^CPT-[a-f0-9]{64}$"},
+    "source": {
+      "type": "object",
+      "required": ["adapter", "source_id", "locator"],
+      "properties": {
+        "adapter": {"$ref": "#/$defs/slug"},
+        "source_id": {"$ref": "#/$defs/slug"},
+        "locator": {"type": "string", "minLength": 1, "maxLength": 4096}
+      },
+      "additionalProperties": false
+    },
+    "source_sha256": {"$ref": "#/$defs/sha256"},
+    "cursor": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]*$"
+    },
+    "envelope_id": {"type": "string", "pattern": "^CAP-[a-f0-9]{64}$"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "checkpoint_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "slug": {"type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$"}
+  }
+}

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added hash-confirmed sidecar adoption for existing projects with read-only
+  `safe`/`blocked`/`already_adopted` diagnostics and automatic CLI discovery.
+- Added adapter-neutral capture requests, immutable envelopes, linear source
+  checkpoints, review-only candidate creation, replay recovery, and audit.
 - Added an immutable Codex host bridge with policy-aware session preparation,
   explicit approval references, content-bound dispatch, host-reported
   receipt/evaluation reconciliation, effect observations, and adapter audit.

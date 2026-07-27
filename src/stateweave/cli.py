@@ -9,11 +9,18 @@ from datetime import date
 from pathlib import Path
 from typing import Any, Sequence
 
+from stateweave.adoption import (
+    apply_project_adoption,
+    audit_adoption,
+    discover_project_config,
+    plan_project_adoption,
+)
 from stateweave.adapters import (
     audit_codex_bridge,
     prepare_codex_session,
     record_codex_observation,
 )
+from stateweave.capture import audit_capture, ingest_capture_request
 from stateweave.context import (
     build_context_index,
     compile_context,
@@ -57,7 +64,7 @@ def _today(value: str | None) -> date | None:
 
 
 def _config(value: str) -> Any:
-    return load_config(Path(value))
+    return load_config(discover_project_config(Path(value)))
 
 
 def _json_file(value: str) -> Any:
@@ -147,6 +154,24 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("destination")
     init.add_argument("--id", required=True, dest="project_id")
     init.add_argument("--name", required=True, dest="project_name")
+
+    adopt = subcommands.add_parser(
+        "adopt",
+        help="plan or apply a non-destructive sidecar in an existing project",
+    )
+    adopt.add_argument("destination")
+    adopt.add_argument("--id", required=True, dest="project_id")
+    adopt.add_argument("--name", required=True, dest="project_name")
+    adopt.add_argument("--apply", action="store_true")
+    adopt.add_argument("--expected-plan-sha256")
+    adopt.add_argument("--adopted-at")
+    adopt.add_argument("--confirm-adopt", action="store_true")
+
+    adoption_audit = subcommands.add_parser(
+        "audit-adoption",
+        help="audit sidecar identity and adoption receipt",
+    )
+    adoption_audit.add_argument("--config", default=".")
 
     audit = subcommands.add_parser("audit", help="validate the memory graph")
     audit.add_argument("--config", default=".")
@@ -287,6 +312,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     continuity_audit.add_argument("--config", default=".")
 
+    capture_import = subcommands.add_parser(
+        "capture-import",
+        help="ingest an adapter-neutral request as review-only candidates",
+    )
+    capture_import.add_argument("request")
+    capture_import.add_argument("--config", default=".")
+
+    capture_audit = subcommands.add_parser(
+        "audit-capture",
+        help="audit capture envelopes, checkpoints, and candidate bindings",
+    )
+    capture_audit.add_argument("--config", default=".")
+
     append_episode = subcommands.add_parser(
         "append-episode",
         help="atomically persist orchestration or workflow documents",
@@ -374,12 +412,41 @@ def _run(args: argparse.Namespace) -> int:
         )
         print(config.root)
         return 0
+    if args.command == "adopt":
+        adoption_plan = plan_project_adoption(
+            args.destination,
+            project_id=args.project_id,
+            project_name=args.project_name,
+        )
+        if not args.apply:
+            print(_json(adoption_plan))
+            return 1 if adoption_plan["status"] == "blocked" else 0
+        if not args.expected_plan_sha256:
+            raise StateWeaveError(
+                "adopt --apply requires --expected-plan-sha256 from the dry-run"
+            )
+        if not args.adopted_at:
+            raise StateWeaveError("adopt --apply requires --adopted-at")
+        result = apply_project_adoption(
+            args.destination,
+            project_id=args.project_id,
+            project_name=args.project_name,
+            expected_plan_sha256=args.expected_plan_sha256,
+            adopted_at=args.adopted_at,
+            confirmed=args.confirm_adopt,
+        )
+        print(_json(result))
+        return 0
     if args.command == "restore":
         manifest = restore_backup(args.backup, args.destination)
         print(_json(manifest))
         return 0
 
     config = _config(args.config)
+    if args.command == "audit-adoption":
+        adoption_report = audit_adoption(config)
+        print(_json(adoption_report.as_dict()))
+        return 0 if adoption_report.ok else 1
     if args.command == "query":
         print(_json(query_memory(config, _memory_query_from_args(args))))
         return 0
@@ -439,6 +506,16 @@ def _run(args: argparse.Namespace) -> int:
         continuity_report = audit_continuity(config)
         print(_json(continuity_report.as_dict()))
         return 0 if continuity_report.ok else 1
+    if args.command == "capture-import":
+        request = _json_file(args.request)
+        if not isinstance(request, dict):
+            raise StateWeaveError("capture request file must contain an object")
+        print(_json(ingest_capture_request(config, request)))
+        return 0
+    if args.command == "audit-capture":
+        capture_report = audit_capture(config)
+        print(_json(capture_report.as_dict()))
+        return 0 if capture_report.ok else 1
     if args.command == "append-episode":
         documents = _json_file(args.documents)
         if not isinstance(documents, list) or any(
@@ -594,19 +671,23 @@ def _run(args: argparse.Namespace) -> int:
         print(_json(transaction_journal))
         return 0
     if args.command == "migrate":
-        plan = plan_migration(
+        migration_plan = plan_migration(
             config,
             from_version=args.from_version,
             to_version=args.to_version,
         )
         if not args.apply:
-            print(_json(plan.as_dict(config.root)))
+            print(_json(migration_plan.as_dict(config.root)))
             return 0
 
         def validate() -> list[str]:
             return audit_repository(config, allow_active_writer=True).errors
 
-        migration_journal = apply_migration(config, plan, validate_after=validate)
+        migration_journal = apply_migration(
+            config,
+            migration_plan,
+            validate_after=validate,
+        )
         print(migration_journal)
         return 0
     raise StateWeaveError(f"unsupported command: {args.command}")
