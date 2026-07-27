@@ -1,6 +1,7 @@
 {
   "schema_version": "1.0",
   "generated_at": "2026-07-26T03:24:00Z",
+  "last_updated_at": "2026-07-27T18:00:00Z",
   "extraction_mode": "clean_transformation",
   "source_repository": {
     "visibility": "private_local_source",
@@ -157,6 +158,36 @@
         "docs/project-plan.md"
       ],
       "notes": "The private audit was not copied. Its findings define gates and exclusions."
+    }
+  ],
+  "local_evolution": [
+    {
+      "date": "2026-07-27",
+      "base_revision": "75ed9f33caebc601803e61ff52142020f3ba5544",
+      "mode": "repository_native_implementation",
+      "private_source_material_used": false,
+      "synthetic_examples_only": true,
+      "inputs": [
+        "current StateWeave source and contracts",
+        "docs/technical-assessment-2026-07-27.md",
+        "direct project-owner continuity objective"
+      ],
+      "destinations": [
+        "src/stateweave/core/layout.py",
+        "src/stateweave/core/locking.py",
+        "src/stateweave/core/project.py",
+        "src/stateweave/core/transactions.py",
+        "src/stateweave/content",
+        "src/stateweave/context",
+        "src/stateweave/continuity",
+        "scripts/benchmark_context.py",
+        "tests",
+        "docs/continuity.md",
+        "docs/performance.md",
+        "docs/verification-report-2026-07-27.md",
+        "docs/decisions/ADR-0002-continuity-and-context-boundary.md"
+      ],
+      "notes": "Implemented locally from the public development codebase with new synthetic fixtures. No operational record, prompt, chat, receipt, credential, PII, raw log, customer artifact, or private-source implementation was copied."
     }
   ],
   "excluded_classes": [

@@ -1,5 +1,9 @@
 # Public repository publication gate — 2026-07-26
 
+> Historical publication evidence. The continuity work added locally on
+> 2026-07-27 has not been committed, pushed, released, or covered by a new
+> hosted CI run in this report.
+
 ## Authorization
 
 The project owner directly confirmed ownership of the product and authority to

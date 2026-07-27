@@ -13,8 +13,14 @@ outside memory-core and require a separately authorized adapter.
 - record identifiers determine filenames through a closed kind mapping;
 - record reads are bounded by configured byte limits;
 - writes use a temporary sibling, flush, `fsync`, and `os.replace`;
+- multi-record writes use before/after payloads and a durable phase journal;
+- idempotency keys are stored only as SHA-256 digests;
+- optimistic record hashes reject stale writers;
 - a writer owns an unpredictable token in an atomically created lock directory;
-- a stale lock is reported but never stolen automatically;
+- a stale lock is reported but never stolen automatically; recovery requires
+  the observed owner digest, token, stale policy, and explicit confirmation;
+- canonical record areas reject nested directories, non-JSON entries, special
+  files, and symlinks instead of silently ignoring them;
 - restore validates member names, types, sizes, hashes, duplicates, and the
   exact allow-list before writing;
 - restore writes into an empty destination by default and never uses
@@ -33,19 +39,36 @@ Semantic audit handles only relationships that require the complete record
 set: role membership, references, reciprocal supersession, cycles, TTL policy,
 backlinks, and structured conflicts.
 
+## Content controls
+
+Valid JSON is still untrusted data. The optional content-policy boundary runs a
+bounded traversal at candidate ingress, promotion, mutation-plan handling, and
+retrieval. The built-in baseline:
+
+- blocks obvious credential assignments and private-key markers;
+- never includes the matched credential value in an error;
+- warns when text resembles an instruction to override host/system authority;
+- lets a project replace the inspector without changing memory-core.
+
+Every `ContextBundle` marks content as `evidence_only` and
+`treat_content_as_untrusted: true`. A warning does not authorize execution.
+The baseline is defense in depth, not a complete secret, PII, malware, or
+natural-language prompt-injection detector.
+
 ## Reporting vulnerabilities
 
-No public disclosure channel exists while the project remains local. Before
-publication, add a reviewed `SECURITY.md` containing supported versions,
-private reporting coordinates, response expectations, and disclosure policy.
-Do not place personal contact data in examples or tests.
+The public development repository still has no reviewed vulnerability
+disclosure channel. Before any release or support claim, add a reviewed
+`SECURITY.md` containing supported versions, private reporting coordinates,
+response expectations, and disclosure policy. Do not place personal contact
+data in examples or tests.
 
 ## Known limits
 
 - Local filesystem permissions and disk encryption remain the operator's
   responsibility.
-- Atomic replacement does not make a multi-file backup durable against
-  physical disk failure.
+- `fsync` and atomic replacement do not protect against every filesystem,
+  hardware, or physical disk failure mode.
 - Structured conflict detection compares declared claim keys and values; it is
   not natural-language truth inference.
 - The passive runtime adapter prepares documents but does not secure or attest
@@ -54,3 +77,5 @@ Do not place personal contact data in examples or tests.
   consumer's downstream handling.
 - The current project has not completed hosted multi-process stress testing on
   every target operating system.
+- The derived index verifies every source hash and remains O(n) in record
+  count; it is an optimization cache, not a signed integrity boundary.

@@ -3,6 +3,44 @@
 Optional modules are importable packages in the same distribution. They may
 depend on memory-core utilities, but memory-core never imports them.
 
+## Context retrieval
+
+`stateweave.context.query_memory` returns ranked metadata and explanations.
+`compile_context` adds bounded record content, revisions, warnings, conflicts,
+and a context digest. Callers provide a complete `MemoryQuery`, including an
+explicit `as_of` date and UTF-8 content budget.
+
+`build_context_index` writes a reconstructible cache beneath the configured
+extensions directory. A verified index produces the same query and bundle as
+the scan path. Drift or corruption causes a safe fallback, not a partial
+answer.
+
+## Persistent continuity
+
+`stateweave.continuity` adds:
+
+- idempotent, untrusted `MemoryCandidate` capture;
+- human-gated promotion through core transactions;
+- immutable stored `ContextBundle` artifacts;
+- atomic workflow and orchestration episode files;
+- persistent, context-bound execution receipts and evaluations;
+- evidence-bound `MutationPlan` preview and write-back;
+- a closed-world continuity audit and verified backup coverage.
+
+Episode document IDs are immutable. Replaying identical content is a no-op;
+reusing an ID for different content fails closed. A receipt persisted through
+this module must include `context_sha256`, although that field remains optional
+in the standalone orchestration contract for backward compatibility.
+
+## Content policy
+
+`stateweave.content.ContentInspector` is an effect-free protocol used on
+candidate ingress, promotion, mutation-plan handling, and context retrieval.
+The baseline blocks obvious credential-shaped values without echoing them and
+warns on instruction-shaped content. A project may inject a stricter
+implementation. Retrieved records are always labeled `evidence_only`; a
+warning never becomes runtime authority.
+
 ## Workflow
 
 `stateweave.workflow.audit_workflow` validates schema-backed work requests,
@@ -67,6 +105,8 @@ only short scalar metadata, rejects non-finite values and sensitive field
 names, and requires timezone-aware timestamps. `ReadOnlyObserver` exposes
 aggregate counts and time bounds without mutation or external I/O.
 
-Persistence, export, dashboards, and network transport are deliberately absent.
-A consumer adding one of those surfaces must define its own retention, privacy,
-authorization, and failure contracts.
+Telemetry persistence, export, dashboards, and network transport remain
+deliberately absent. Continuity persistence stores schema-backed synthetic or
+consumer-supplied project records; it does not turn telemetry into a log sink.
+A consumer adding transport owns retention, privacy, authorization, and
+failure contracts.

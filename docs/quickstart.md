@@ -1,7 +1,8 @@
 # Quickstart
 
-StateWeave currently targets Python 3.11 or newer. The repository is a local
-development extraction and has no published package or definitive license.
+StateWeave currently targets Python 3.11 or newer. This is a public development
+repository, but there is no published package, release, definitive license, or
+current support claim. The commands below operate on a local checkout.
 
 ## Install from a local checkout
 
@@ -33,7 +34,9 @@ my-memory/
 │   └── state/current.json
 └── .stateweave/
     ├── backups/
-    └── migrations/
+    ├── extensions/
+    ├── migrations/
+    └── transactions/
 ```
 
 ## Audit and review
@@ -51,6 +54,87 @@ only when both layers pass.
 Stale verified facts, broken references, nonreciprocal supersession, cycles,
 unconfigured roles, TTL violations, and structured claim conflicts fail the
 audit according to project policy.
+
+Optional continuity artifacts have a separate audit:
+
+```bash
+stateweave audit-continuity --config ./my-memory
+```
+
+Run both commands before backup or handoff when continuity modules are in use.
+
+## Query and compile context
+
+The CLI defaults to verified facts and accepted decisions. Use an explicit
+`as_of` for reproducible output:
+
+```bash
+stateweave query "durable storage decision" \
+  --config ./my-memory \
+  --as-of 2026-07-27 \
+  --term durable \
+  --term storage
+
+stateweave context "durable storage decision" \
+  --config ./my-memory \
+  --as-of 2026-07-27 \
+  --term durable \
+  --term storage \
+  --max-items 8 \
+  --max-content-bytes 12000 \
+  --persist
+```
+
+`--persist` stores the verified bundle for a later execution receipt. Build or
+inspect the optional derived index with:
+
+```bash
+stateweave index-build --config ./my-memory --as-of 2026-07-27
+stateweave index-status --config ./my-memory --as-of 2026-07-27
+```
+
+## Capture and promote a candidate
+
+`remember` reads a proposed fact, decision, or state JSON file. It stores an
+untrusted candidate; it does not promote the record:
+
+```bash
+stateweave remember ./proposed-fact.json \
+  --config ./my-memory \
+  --idempotency-key session-a-observation-1 \
+  --captured-at 2026-07-27T12:00:00Z \
+  --classification internal \
+  --confidence high \
+  --source-type filesystem \
+  --source-locator synthetic/source.py \
+  --observed-at 2026-07-27T12:00:00Z \
+  --artifact-path synthetic/source.py \
+  --artifact-sha256 <sha256> \
+  --as-of 2026-07-27T12:00:00Z \
+  --extraction-method syntax-parser \
+  --observer local-agent
+```
+
+Preview hashes and changed top-level fields without mutating memory:
+
+```bash
+stateweave candidate-preview CND-<digest> --config ./my-memory
+```
+
+For an update candidate, pass `--operation update --expected-sha256 <sha256>`
+to `remember`. The promotion will reject any intervening record revision.
+After reviewing the returned `CND-...` candidate and preview:
+
+```bash
+stateweave promote-candidate CND-<digest> \
+  --config ./my-memory \
+  --reviewer-role maintainer \
+  --promoted-at 2026-07-27T12:05:00Z \
+  --confirm-human
+```
+
+See `docs/continuity.md` for receipt/evaluation episodes, mutation plans, and
+recovery commands.
 
 ## Backup and restore
 

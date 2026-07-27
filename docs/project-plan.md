@@ -83,3 +83,16 @@ a core dependency.
 
 Definitive licensing, additional remotes, tags, releases, package publication,
 or a maturity claim beyond proven evidence requires a separate human gate.
+
+## Post-extraction continuity checkpoint — 2026-07-27
+
+The local worktree now implements the next vertical slice described in
+`docs/technical-assessment-2026-07-27.md`: deterministic retrieval and context,
+idempotent candidates, persistent episodes/receipts/evaluations, governed
+write-back, crash recovery, content policy, derived indexing, concurrency
+tests, and a versioned benchmark. Current evidence and remaining external
+gates are recorded in `docs/verification-report-2026-07-27.md`.
+
+This checkpoint does not expand the publication authorization. Commit, push,
+hosted CI, tags, releases, package publication, definitive licensing, support,
+and maturity claims retain their existing gates.
