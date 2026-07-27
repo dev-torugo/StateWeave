@@ -21,6 +21,7 @@ from stateweave.core.io import (
     read_json,
     sha256_bytes,
 )
+from stateweave.core.layout import inspect_store_layout
 
 CURRENT_RECORD_VERSION = "1.0"
 
@@ -130,8 +131,12 @@ def plan_migration(
         raise MigrationError(
             f"unsupported migration {from_version!r} -> {to_version!r}"
         )
+    layout = inspect_store_layout(config)
+    if layout.errors:
+        raise MigrationError("invalid memory store layout: " + "; ".join(layout.errors))
     changes: list[PlannedChange] = []
-    for path in sorted(config.facts_dir.glob("*.json")):
+    fact_paths = [path for kind, path in layout.record_paths if kind == "fact"]
+    for path in fact_paths:
         try:
             payload = read_json(path, max_bytes=config.limits.max_record_bytes)
         except RecordError as exc:

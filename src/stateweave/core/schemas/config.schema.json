@@ -63,6 +63,9 @@
         },
         "migrations": {
           "$ref": "#/$defs/relativePath"
+        },
+        "extensions": {
+          "$ref": "#/$defs/relativePath"
         }
       },
       "additionalProperties": false

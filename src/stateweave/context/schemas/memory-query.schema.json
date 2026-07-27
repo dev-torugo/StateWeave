@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:context:memory-query:1",
+  "title": "StateWeave memory query 1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "objective",
+    "as_of",
+    "terms",
+    "filters",
+    "relation_depth",
+    "budget"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "memory_query"},
+    "objective": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 4000
+    },
+    "as_of": {"type": "string", "format": "date"},
+    "terms": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 100,
+      "items": {"type": "string", "minLength": 2, "maxLength": 200}
+    },
+    "filters": {
+      "type": "object",
+      "required": [
+        "record_kinds",
+        "statuses",
+        "domains",
+        "classifications"
+      ],
+      "properties": {
+        "record_kinds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"enum": ["fact", "decision", "state"]}
+        },
+        "statuses": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "verified",
+              "provisional",
+              "disputed",
+              "deprecated",
+              "accepted",
+              "proposed",
+              "superseded",
+              "rejected"
+            ]
+          }
+        },
+        "domains": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/slug"}
+        },
+        "classifications": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/slug"}
+        },
+        "minimum_confidence": {
+          "enum": ["low", "medium", "high"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "relation_depth": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+    },
+    "budget": {
+      "type": "object",
+      "required": ["max_items", "max_content_bytes"],
+      "properties": {
+        "max_items": {"type": "integer", "minimum": 1, "maximum": 100},
+        "max_content_bytes": {
+          "type": "integer",
+          "minimum": 256,
+          "maximum": 1048576
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,63}$"
+    }
+  }
+}

@@ -184,6 +184,37 @@ class MemoryAuditTests(unittest.TestCase):
             self.assertFalse(report.ok)
             self.assertIn("exceeds configured limit", report.errors[0])
 
+    def test_unexpected_record_area_content_is_not_silently_ignored(self) -> None:
+        with TemporaryDirectory() as temporary:
+            config = project(Path(temporary) / "memory")
+            nested = config.facts_dir / "nested"
+            nested.mkdir()
+            (nested / "FCT-hidden.json").write_text("{not-json}", encoding="utf-8")
+            (config.decisions_dir / "notes.txt").write_text(
+                "synthetic unexpected content",
+                encoding="utf-8",
+            )
+
+            report = audit_repository(config)
+
+            self.assertFalse(report.ok)
+            joined = "; ".join(report.errors)
+            self.assertIn("memory/facts/nested: unexpected directory", joined)
+            self.assertIn("memory/decisions/notes.txt: unexpected non-JSON", joined)
+
+    def test_missing_state_record_fails_closed(self) -> None:
+        with TemporaryDirectory() as temporary:
+            config = project(Path(temporary) / "memory")
+            config.state_file.unlink()
+
+            report = audit_repository(config)
+
+            self.assertFalse(report.ok)
+            self.assertIn(
+                "configured state record is missing",
+                "; ".join(report.errors),
+            )
+
     def test_large_supersession_graph_does_not_depend_on_python_recursion(self) -> None:
         records: dict[str, LoadedRecord] = {}
         count = 1500

@@ -26,6 +26,7 @@
     "started_at": {"type": "string", "format": "date-time"},
     "finished_at": {"type": "string", "format": "date-time"},
     "input_manifest_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "context_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "outputs": {
       "type": "array",
       "uniqueItems": true,

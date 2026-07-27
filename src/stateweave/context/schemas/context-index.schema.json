@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:context:derived-index:1",
+  "title": "StateWeave rebuildable context index 1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "index_sha256",
+    "config_sha256",
+    "snapshot_sha256",
+    "audited_as_of",
+    "records",
+    "review_queue",
+    "conflicts"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "context_index"},
+    "id": {"type": "string", "pattern": "^IDX-[a-f0-9]{64}$"},
+    "index_sha256": {"$ref": "#/$defs/sha256"},
+    "config_sha256": {"$ref": "#/$defs/sha256"},
+    "snapshot_sha256": {"$ref": "#/$defs/sha256"},
+    "audited_as_of": {"type": "string", "format": "date"},
+    "records": {
+      "type": "array",
+      "maxItems": 1000000,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "record_kind",
+          "source_path",
+          "revision_sha256",
+          "content"
+        ],
+        "properties": {
+          "id": {"$ref": "#/$defs/recordId"},
+          "record_kind": {"enum": ["fact", "decision", "state"]},
+          "source_path": {"type": "string", "minLength": 1, "maxLength": 512},
+          "revision_sha256": {"$ref": "#/$defs/sha256"},
+          "content": {"type": "object"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "review_queue": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "reason", "due"],
+        "properties": {
+          "id": {"$ref": "#/$defs/recordId"},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 100},
+          "due": {"type": "string", "format": "date"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["left_id", "right_id", "subject", "predicate", "scope"],
+        "properties": {
+          "left_id": {"$ref": "#/$defs/recordId"},
+          "right_id": {"$ref": "#/$defs/recordId"},
+          "subject": {"type": "string"},
+          "predicate": {"type": "string"},
+          "scope": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "recordId": {
+      "type": "string",
+      "pattern": "^(?:FCT|DEC|STATE)-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"
+    }
+  }
+}

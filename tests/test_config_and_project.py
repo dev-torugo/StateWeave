@@ -24,6 +24,7 @@ class ConfigAndProjectTests(unittest.TestCase):
             self.assertEqual(loaded.roles, ("maintainer", "reviewer", "contributor"))
             self.assertTrue(config.state_file.is_file())
             self.assertTrue(config.facts_dir.is_dir())
+            self.assertTrue(config.extensions_dir.is_dir())
 
     def test_initialize_refuses_non_empty_destination(self) -> None:
         with TemporaryDirectory() as temporary:

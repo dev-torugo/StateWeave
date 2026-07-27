@@ -63,6 +63,26 @@ class BackupAndMigrationTests(unittest.TestCase):
                 (restored.facts_dir / "FCT-legacy.json").read_bytes(),
                 payload,
             )
+            self.assertTrue(restored.decisions_dir.is_dir())
+            self.assertTrue(restored.metadata_dir.is_dir())
+            self.assertTrue(restored.backups_dir.is_dir())
+            self.assertTrue(restored.migrations_dir.is_dir())
+            self.assertTrue(restored.extensions_dir.is_dir())
+
+    def test_backup_restores_opaque_extension_artifacts(self) -> None:
+        with TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            config = project(base / "source")
+            artifact = config.extensions_dir / "synthetic" / "receipt.json"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_bytes(canonical_json_bytes({"synthetic": True}))
+
+            backup = create_backup(config, label="extensions")
+            restore_backup(backup, base / "restored")
+            restored = load_config(base / "restored")
+
+            restored_artifact = restored.extensions_dir / "synthetic" / "receipt.json"
+            self.assertEqual(restored_artifact.read_bytes(), artifact.read_bytes())
 
     def test_migration_is_planned_applied_and_journaled(self) -> None:
         with TemporaryDirectory() as temporary:
@@ -217,6 +237,30 @@ class BackupAndMigrationTests(unittest.TestCase):
                     from_version="0.1",
                     to_version="1.0",
                 )
+
+    def test_backup_rejects_content_hidden_from_the_canonical_layout(self) -> None:
+        with TemporaryDirectory() as temporary:
+            config = project(Path(temporary) / "memory")
+            nested = config.facts_dir / "nested"
+            nested.mkdir()
+            (nested / "FCT-hidden.json").write_text("{}", encoding="utf-8")
+
+            with self.assertRaises(BackupError) as captured:
+                create_backup(config)
+
+            self.assertIn("unexpected directory", str(captured.exception))
+
+    def test_migration_rejects_content_hidden_from_the_canonical_layout(self) -> None:
+        with TemporaryDirectory() as temporary:
+            config = project(Path(temporary) / "memory")
+            nested = config.decisions_dir / "nested"
+            nested.mkdir()
+            (nested / "DEC-hidden.json").write_text("{}", encoding="utf-8")
+
+            with self.assertRaises(MigrationError) as captured:
+                plan_migration(config, from_version="0.1", to_version="1.0")
+
+            self.assertIn("unexpected directory", str(captured.exception))
 
 
 if __name__ == "__main__":

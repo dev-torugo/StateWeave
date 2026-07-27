@@ -6,12 +6,14 @@ import re
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Callable
 
 from stateweave.core.config import ProjectConfig
 from stateweave.core.errors import RecordError
 from stateweave.core.io import canonical_json_bytes, read_json
+from stateweave.core.layout import inspect_store_layout
 from stateweave.core.schema import validate_record
+from stateweave.core.transactions import inspect_transaction_store
 
 RECORD_ID = re.compile(r"^(?:FCT|DEC|STATE)-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$")
 SchemaValidator = Callable[[dict[str, Any], str, Path], list[str]]
@@ -93,28 +95,21 @@ class AuditReport:
         }
 
 
-def _record_paths(config: ProjectConfig) -> Iterable[tuple[str, Path]]:
-    for path in sorted(config.facts_dir.glob("*.json")):
-        yield "fact", path
-    for path in sorted(config.decisions_dir.glob("*.json")):
-        yield "decision", path
-    if config.state_file.exists():
-        yield "state", config.state_file
-
-
 def load_records(
     config: ProjectConfig,
     *,
     schema_validator: SchemaValidator | None = None,
 ) -> tuple[dict[str, LoadedRecord], list[str]]:
     records: dict[str, LoadedRecord] = {}
-    errors: list[str] = []
-    paths = list(_record_paths(config))
+    layout = inspect_store_layout(config)
+    errors = list(layout.errors)
+    paths = list(layout.record_paths)
     if len(paths) > config.limits.max_records:
-        return {}, [
+        errors.append(
             f"record count {len(paths)} exceeds configured limit "
             f"{config.limits.max_records}"
-        ]
+        )
+        return {}, errors
     for expected_kind, path in paths:
         if path.is_symlink():
             errors.append(
@@ -413,6 +408,7 @@ def audit_repository(
     today: date | None = None,
     schema_validator: SchemaValidator | None = None,
     allow_active_writer: bool = False,
+    active_transaction_id: str | None = None,
 ) -> AuditReport:
     """Audit official schemas plus all cross-record invariants."""
 
@@ -427,6 +423,11 @@ def audit_repository(
         schema_validator=schema_validator,
     )
     report = AuditReport(errors=load_errors, record_count=len(records))
+    transaction_report = inspect_transaction_store(
+        config,
+        active_transaction_id=active_transaction_id,
+    )
+    report.errors.extend(transaction_report.errors)
 
     for record in records.values():
         data = record.data
