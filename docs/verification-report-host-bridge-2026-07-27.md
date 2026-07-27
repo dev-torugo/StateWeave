@@ -34,7 +34,7 @@ and commit that carry this change; it is not pre-claimed here.
 The canonical gate passed after implementation:
 
 - extraction contracts: OK;
-- 100 unit, integration, negative, concurrency, and adversarial tests: OK;
+- 102 unit, integration, negative, concurrency, and adversarial tests: OK;
 - migration/backup/restore release drill: OK.
 
 Additional checks passed:
@@ -52,7 +52,20 @@ Focused tests cover:
 - denied and human-gated effects;
 - instruction-shaped warnings and secret blocking without value echo;
 - authority-field tampering and unexpected adapter entries;
+- bounded retry of synthetic Windows sharing violations and owner inspection
+  only at lock-acquisition timeout;
 - the three public CLI entrypoints.
+
+## Hosted-CI remediation
+
+The first pull-request run exposed a pre-existing Windows lock race in the
+multi-process test: a waiting process could inspect `owner.json` while its
+owner attempted release. The remediation stops repeated owner inspection
+during polling and retries only transient release-time `PermissionError`
+conditions inside the existing configured timeout. Token mismatch, stale-lock
+handling, unexpected entries, and non-transient removal failures retain their
+fail-closed behavior. The successful hosted rerun, if any, belongs to the
+subsequent pull-request commit and is not pre-claimed by this local report.
 
 ## Remaining gates
 

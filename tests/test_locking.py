@@ -7,6 +7,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from stateweave.core.errors import LockUnavailableError
 from stateweave.core.locking import (
@@ -43,6 +44,33 @@ class WriterLockTests(unittest.TestCase):
             with second:
                 self.assertTrue(second.acquired)
             self.assertFalse((metadata / "writer.lock").exists())
+
+    def test_waiter_inspects_owner_only_after_timeout(self) -> None:
+        with TemporaryDirectory() as temporary:
+            metadata = Path(temporary)
+            owner = WriterLock(
+                metadata,
+                timeout_seconds=0.1,
+                stale_after_seconds=60,
+                poll_interval=0.001,
+            ).acquire()
+            waiter = WriterLock(
+                metadata,
+                timeout_seconds=0.01,
+                stale_after_seconds=60,
+                poll_interval=0.001,
+            )
+            try:
+                with patch.object(
+                    waiter,
+                    "_age_seconds",
+                    return_value=0.0,
+                ) as inspect_age:
+                    with self.assertRaises(LockUnavailableError):
+                        waiter.acquire()
+                inspect_age.assert_called_once_with()
+            finally:
+                owner.release()
 
     def test_stale_lock_is_reported_but_not_stolen(self) -> None:
         with TemporaryDirectory() as temporary:
@@ -87,6 +115,47 @@ class WriterLockTests(unittest.TestCase):
             with self.assertRaises(LockUnavailableError):
                 lock.release()
             self.assertTrue(lock.lock_dir.exists())
+
+    def test_release_retries_transient_windows_sharing_violations(self) -> None:
+        with TemporaryDirectory() as temporary:
+            metadata = Path(temporary)
+            lock = WriterLock(
+                metadata,
+                timeout_seconds=0.2,
+                stale_after_seconds=60,
+                poll_interval=0.001,
+            ).acquire()
+            original_unlink = Path.unlink
+            original_rmdir = Path.rmdir
+            unlink_attempts = 0
+            rmdir_attempts = 0
+
+            def transient_unlink(path: Path, *args: object, **kwargs: object) -> None:
+                nonlocal unlink_attempts
+                if path == lock.owner_file and unlink_attempts == 0:
+                    unlink_attempts += 1
+                    raise PermissionError("synthetic Windows sharing violation")
+                original_unlink(path, *args, **kwargs)
+
+            def transient_rmdir(path: Path) -> None:
+                nonlocal rmdir_attempts
+                if path == lock.lock_dir and rmdir_attempts == 0:
+                    rmdir_attempts += 1
+                    raise PermissionError(
+                        "synthetic Windows directory sharing violation"
+                    )
+                original_rmdir(path)
+
+            with (
+                patch.object(Path, "unlink", transient_unlink),
+                patch.object(Path, "rmdir", transient_rmdir),
+            ):
+                lock.release()
+
+            self.assertEqual(unlink_attempts, 1)
+            self.assertEqual(rmdir_attempts, 1)
+            self.assertFalse(lock.acquired)
+            self.assertFalse(lock.lock_dir.exists())
 
     def test_lock_inspection_is_read_only_and_fingerprint_bound(self) -> None:
         with TemporaryDirectory() as temporary:

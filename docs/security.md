@@ -17,6 +17,8 @@ outside memory-core and require a separately authorized adapter.
 - idempotency keys are stored only as SHA-256 digests;
 - optimistic record hashes reject stale writers;
 - a writer owns an unpredictable token in an atomically created lock directory;
+- waiting writers avoid repeatedly opening owner evidence, and release retries
+  only transient sharing violations within the configured lock timeout;
 - a stale lock is reported but never stolen automatically; recovery requires
   the observed owner digest, token, stale policy, and explicit confirmation;
 - canonical record areas reject nested directories, non-JSON entries, special
