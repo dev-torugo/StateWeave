@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:adapters:codex-session:1",
+  "title": "StateWeave Codex host session 1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "session_sha256",
+    "created_at",
+    "policy_id",
+    "policy_sha256",
+    "role",
+    "requested_effects",
+    "authority_decisions",
+    "ready_for_host",
+    "context_id",
+    "context_sha256",
+    "context",
+    "task",
+    "input_manifest",
+    "worker",
+    "dispatch",
+    "content_findings"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "codex_session"},
+    "id": {"type": "string", "pattern": "^SES-[a-f0-9]{64}$"},
+    "session_sha256": {"$ref": "#/$defs/sha256"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "policy_id": {"$ref": "#/$defs/slug"},
+    "policy_sha256": {"$ref": "#/$defs/sha256"},
+    "role": {"$ref": "#/$defs/slug"},
+    "requested_effects": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 100,
+      "items": {"$ref": "#/$defs/slug"}
+    },
+    "authority_decisions": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "required": [
+          "effect",
+          "policy_allowed",
+          "requires_human",
+          "approval_ref",
+          "reason"
+        ],
+        "properties": {
+          "effect": {"$ref": "#/$defs/slug"},
+          "policy_allowed": {"type": "boolean"},
+          "requires_human": {"type": "boolean"},
+          "approval_ref": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "reason": {"type": "string", "minLength": 1, "maxLength": 1000}
+        },
+        "additionalProperties": false
+      }
+    },
+    "ready_for_host": {"type": "boolean"},
+    "context_id": {"type": "string", "pattern": "^CTX-[a-f0-9]{64}$"},
+    "context_sha256": {"$ref": "#/$defs/sha256"},
+    "context": {"type": "object"},
+    "task": {"type": "object"},
+    "input_manifest": {"type": "object"},
+    "worker": {"type": "object"},
+    "dispatch": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "task_id",
+        "objective",
+        "input_manifest_sha256",
+        "allowed_effects",
+        "metadata",
+        "runtime",
+        "execution_authorized"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0"},
+        "task_id": {
+          "type": "string",
+          "pattern": "^TSK-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"
+        },
+        "objective": {"type": "string", "minLength": 10, "maxLength": 20000},
+        "input_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "allowed_effects": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 100,
+          "items": {"$ref": "#/$defs/slug"}
+        },
+        "metadata": {
+          "type": "object",
+          "maxProperties": 50,
+          "additionalProperties": {
+            "type": ["string", "integer", "boolean", "null"]
+          }
+        },
+        "runtime": {"const": "codex"},
+        "execution_authorized": {"const": false}
+      },
+      "additionalProperties": false
+    },
+    "content_findings": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {"$ref": "#/$defs/finding"}
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "slug": {"type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$"},
+    "finding": {
+      "type": "object",
+      "required": ["code", "severity", "path", "message"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1, "maxLength": 100},
+        "severity": {"enum": ["warning", "block"]},
+        "path": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "message": {"type": "string", "minLength": 1, "maxLength": 1000}
+      },
+      "additionalProperties": false
+    }
+  }
+}

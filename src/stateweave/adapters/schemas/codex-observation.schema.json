@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:adapters:codex-observation:1",
+  "title": "StateWeave Codex host observation 1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "observation_sha256",
+    "session_id",
+    "receipt_id",
+    "receipt_sha256",
+    "evaluation_id",
+    "evaluation_sha256",
+    "observer",
+    "observed_at",
+    "content_findings"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "codex_observation"},
+    "id": {"type": "string", "pattern": "^OBS-[a-f0-9]{64}$"},
+    "observation_sha256": {"$ref": "#/$defs/sha256"},
+    "session_id": {"type": "string", "pattern": "^SES-[a-f0-9]{64}$"},
+    "receipt_id": {
+      "type": "string",
+      "pattern": "^RCP-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"
+    },
+    "receipt_sha256": {"$ref": "#/$defs/sha256"},
+    "evaluation_id": {
+      "type": "string",
+      "pattern": "^EVL-[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"
+    },
+    "evaluation_sha256": {"$ref": "#/$defs/sha256"},
+    "observer": {"type": "string", "minLength": 1, "maxLength": 500},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "content_findings": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {"$ref": "#/$defs/finding"}
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "finding": {
+      "type": "object",
+      "required": ["code", "severity", "path", "message"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1, "maxLength": 100},
+        "severity": {"enum": ["warning", "block"]},
+        "path": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "message": {"type": "string", "minLength": 1, "maxLength": 1000}
+      },
+      "additionalProperties": false
+    }
+  }
+}

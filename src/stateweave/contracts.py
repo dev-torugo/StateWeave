@@ -15,6 +15,10 @@ from stateweave.core.errors import ContractError
 from stateweave.core.schema import FORMAT_CHECKER
 
 MODULE_SCHEMAS = {
+    "stateweave.adapters": (
+        "codex-observation.schema.json",
+        "codex-session.schema.json",
+    ),
     "stateweave.continuity": (
         "episodic-ledger.schema.json",
         "memory-candidate.schema.json",

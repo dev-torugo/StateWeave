@@ -27,6 +27,10 @@
     "finished_at": {"type": "string", "format": "date-time"},
     "input_manifest_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "context_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "session_id": {
+      "type": "string",
+      "pattern": "^SES-[a-f0-9]{64}$"
+    },
     "outputs": {
       "type": "array",
       "uniqueItems": true,
@@ -37,6 +41,25 @@
         "properties": {
           "name": {"$ref": "#/$defs/slug"},
           "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "effects": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "required": ["name", "status", "approval_ref"],
+        "properties": {
+          "name": {"$ref": "#/$defs/slug"},
+          "status": {"enum": ["succeeded", "failed", "not_attempted"]},
+          "approval_ref": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 500
+          }
         },
         "additionalProperties": false
       }
