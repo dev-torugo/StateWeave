@@ -4,6 +4,11 @@ Every consumer owns a versioned `stateweave.toml`. Core code contains no fixed
 repository directories, authority role, TTL, classification, or operational
 limit.
 
+Standalone projects keep this file at their root. An existing project adopted
+through the CLI keeps the complete store at
+`.stateweave-project/stateweave.toml`. CLI directory discovery accepts one
+location or the other, never both, and refuses symlinks.
+
 The parsed TOML document must satisfy the packaged Draft 2020-12 configuration
 schema before it is returned to callers. Cross-field path topology and TTL
 rules remain explicit semantic checks.

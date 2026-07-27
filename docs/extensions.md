@@ -3,6 +3,29 @@
 Optional modules are importable packages in the same distribution. They may
 depend on memory-core utilities, but memory-core never imports them.
 
+## Existing-project adoption
+
+`stateweave.adoption.plan_project_adoption` returns a versioned, read-only
+sidecar plan. `apply_project_adoption` accepts only the exact plan digest and
+explicit confirmation. `discover_project_config` resolves one embedded or one
+sidecar configuration and rejects ambiguity and symlinks.
+
+Adoption does not inspect host-project file contents. The immutable receipt is
+stored below the adopted store's extension path and is included in backup.
+`audit_adoption` validates its digest and project identity.
+
+## Capture Inbox
+
+`stateweave.capture.ingest_capture_request` validates an adapter-neutral
+request, enforces one linear cursor per declared source, and creates
+deterministic review-required candidates. It persists an immutable envelope
+and a digest-bound checkpoint. Replays converge; stale cursor branches fail
+before write.
+
+`audit_capture` verifies closed-world storage, schemas, digests, chain
+topology, checkpoint head, content findings, and candidate/provenance
+bindings. The package deliberately contains no source client or watcher.
+
 ## Context retrieval
 
 `stateweave.context.query_memory` returns ranked metadata and explanations.

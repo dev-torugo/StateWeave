@@ -7,12 +7,14 @@ CI run, or runtime event automatically.
 ## Lifecycle
 
 ```text
-explicit observation
+explicit CaptureRequest or manual observation
         |
         v
-untrusted MemoryCandidate -- content/schema policy --> human review
-        |                                               |
-        +---------------- promotion --------------------+
+CaptureEnvelope/checkpoint (optional) --> untrusted MemoryCandidate
+        |                                      |
+        +-------- content/schema policy -------+--> human review
+                                                       |
+        +---------------- promotion -------------------+
                                 |
                                 v
                     facts / decisions / STATE-current
@@ -84,6 +86,12 @@ write. Instruction-shaped content is stored only as a warning. Promotion
 revalidates content and canonical record schemas, requires configured roles,
 honors the human gate, and uses a deterministic core idempotency receipt.
 
+The optional Capture Inbox batches host-supplied observations before this
+boundary. `capture-import` validates a versioned request, enforces a linear
+source cursor, persists `CAP-<sha256>`, and derives one review-required
+candidate per event. It does not scan a repository or execute the declared
+adapter. See `docs/adoption-and-capture.md`.
+
 ## Persistent execution evidence
 
 Store a compiled context with `context --persist` or
@@ -147,6 +155,7 @@ transaction receipt.
 | proposed plan results exist | `audit-continuity` warning | rerun `apply-plan` to reconcile its receipt |
 | index is stale or invalid | `index-status` | run `index-build`; canonical memory is unchanged |
 | malformed continuity artifact | `audit-continuity` error | preserve evidence and repair/remove only with human review |
+| capture candidate exists without envelope/checkpoint | `audit-capture` error | replay the exact `capture-import` request |
 | Codex session/observation drift | `audit-codex` error | preserve the artifact and reconcile from the original host evidence |
 
 Neither stale age nor a partial result transfers authority automatically.

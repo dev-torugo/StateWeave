@@ -14,9 +14,10 @@ repository does not currently grant usage or redistribution rights.
 ## Current development checkpoint
 
 The current codebase implements a runtime-neutral continuity slice and an
-explicit Codex host bridge on top of the governed `memory-core`:
+explicit host-ingestion boundary on top of the governed `memory-core`:
 
 - versioned project configuration;
+- dry-run, hash-confirmed sidecar adoption for existing projects;
 - facts, decisions, and current state;
 - configurable TTL and review queues;
 - reciprocal supersession and backlinks;
@@ -31,6 +32,8 @@ explicit Codex host bridge on top of the governed `memory-core`:
 - untrusted candidates, human-gated promotion, persistent workflow and
   orchestration episodes, receipts, evaluations, and governed write-back;
 - bounded content-policy hooks for ingress and retrieval;
+- immutable adapter-neutral capture envelopes, linear checkpoints, and
+  review-only candidate ingestion;
 - immutable, context-bound Codex session preparation and host-reported
   receipt/evaluation reconciliation;
 - synthetic multi-process, abrupt-exit, backup/restore, and performance tests;
@@ -45,6 +48,8 @@ See `docs/project-plan.md` for the full extraction sequence and gates.
 ## Optional modules
 
 - deterministic retrieval, `ContextBundle`, and derived indexing;
+- existing-project adoption with sidecar config discovery;
+- checkpointed Capture Inbox with candidate-only persistence;
 - persistent candidates, episodes, receipts, evaluations, and mutation plans;
 - bounded content inspection with project-replaceable policy hooks;
 - governed workflow records and lifecycle audit;
@@ -56,9 +61,10 @@ See `docs/project-plan.md` for the full extraction sequence and gates.
 - project-owned policy packs with non-bypassable human gates.
 
 See `docs/continuity.md` for the end-to-end lifecycle,
-`docs/codex-bridge.md` for the host integration, `docs/performance.md` for
-measured local evidence, and `docs/extensions.md` for extension and authority
-contracts.
+`docs/adoption-and-capture.md` for existing-project deployment and host
+ingestion, `docs/codex-bridge.md` for the host integration,
+`docs/performance.md` for measured local evidence, and `docs/extensions.md`
+for extension and authority contracts.
 
 The local extraction evidence is recorded in
 `docs/verification-report-2026-07-25.md`; the public-repository authorization
@@ -67,4 +73,5 @@ and remaining release gates are recorded in
 through PR #1 with its hosted matrix green; its historical evidence is in
 `docs/verification-report-2026-07-27.md`. Host-bridge evidence and limitations
 are recorded separately in
-`docs/verification-report-host-bridge-2026-07-27.md`.
+`docs/verification-report-host-bridge-2026-07-27.md`; adoption/capture evidence
+is recorded in `docs/verification-report-adoption-capture-2026-07-27.md`.

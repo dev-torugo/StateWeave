@@ -39,6 +39,37 @@ my-memory/
     └── transactions/
 ```
 
+## Adopt an existing project
+
+Do not point `init` at a non-empty project. Plan a sidecar adoption:
+
+```bash
+stateweave adopt ./existing-project \
+  --id existing-project \
+  --name "Existing Project"
+```
+
+The JSON result is read-only and reports `safe`, `blocked`, or
+`already_adopted`. A safe plan declares exactly one write,
+`.stateweave-project/`, plus an inventory digest and `plan_sha256`. Existing
+file contents are not scanned or copied.
+
+Apply only the exact reviewed plan:
+
+```bash
+stateweave adopt ./existing-project \
+  --id existing-project \
+  --name "Existing Project" \
+  --apply \
+  --expected-plan-sha256 <plan-sha256> \
+  --adopted-at 2026-07-27T19:00:00Z \
+  --confirm-adopt
+```
+
+After adoption, normal commands discover the sidecar when `--config` points
+at `./existing-project`. StateWeave does not edit `.gitignore` or import
+existing project files as memory. See `docs/adoption-and-capture.md`.
+
 ## Audit and review
 
 ```bash
@@ -58,7 +89,9 @@ audit according to project policy.
 Optional continuity artifacts have a separate audit:
 
 ```bash
+stateweave audit-adoption --config ./my-memory
 stateweave audit-continuity --config ./my-memory
+stateweave audit-capture --config ./my-memory
 stateweave audit-codex --config ./my-memory
 ```
 
@@ -96,6 +129,23 @@ stateweave index-status --config ./my-memory --as-of 2026-07-27
 ```
 
 ## Capture and promote a candidate
+
+For a host that already emits versioned capture requests with source cursors,
+ingest the batch first:
+
+```bash
+stateweave capture-import ./capture-request.json \
+  --config ./existing-project
+
+stateweave audit-capture --config ./existing-project
+stateweave audit-continuity --config ./existing-project
+```
+
+Each event becomes an idempotent `MemoryCandidate` with
+`review_required: true`. `capture-import` does not contact the declared
+adapter, scan the project, or promote canonical memory. The current
+`CaptureRequest` contract and recovery behavior are documented in
+`docs/adoption-and-capture.md`.
 
 `remember` reads a proposed fact, decision, or state JSON file. It stores an
 untrusted candidate; it does not promote the record:

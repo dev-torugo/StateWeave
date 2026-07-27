@@ -93,7 +93,9 @@ retrieval and context, idempotent candidates, persistent
 episodes/receipts/evaluations, governed write-back, crash recovery, content
 policy, derived indexing, concurrency tests, and a versioned benchmark.
 
-The next repository-native slice adds the Gate E host boundary:
+The Gate E host boundary landed through PR #2 at `4f347b1` after the hosted
+matrix exposed and then verified a Windows writer-lock remediation. It
+provides:
 
 - immutable Codex session preparation bound to policy, manifest, worker, and
   exact context;
@@ -101,6 +103,17 @@ The next repository-native slice adds the Gate E host boundary:
 - host-reported effect, receipt, and evaluation reconciliation;
 - closed-world adapter audit and persistent orchestration binding;
 - CLI and integration guidance.
+
+The current repository-native slice addresses adoption and upstream capture:
+
+- a read-only, hash-bound diagnostic for existing projects;
+- single-sidecar materialization without overwriting existing content;
+- embedded/sidecar config discovery with ambiguity and symlink rejection;
+- versioned adapter-neutral capture requests and immutable envelopes;
+- linear source checkpoints, replay-safe candidate ingestion, and capture
+  audit;
+- a synthetic proof from existing project through promotion and second-session
+  retrieval.
 
 These checkpoints do not expand publication authorization. Tags, releases,
 package publication, definitive licensing, support, and maturity claims retain

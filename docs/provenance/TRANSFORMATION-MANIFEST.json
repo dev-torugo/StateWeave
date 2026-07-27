@@ -230,6 +230,30 @@
         "docs/verification-report-host-bridge-2026-07-27.md"
       ],
       "notes": "Implemented from the public repository and public hosted-check diagnostics with synthetic sharing-violation tests. No operational record, credential, PII, customer artifact, private log, or external-system implementation was copied."
+    },
+    {
+      "date": "2026-07-27",
+      "base_revision": "4f347b13d007bf667ca94a22b3d1215f5c23f81f",
+      "mode": "repository_native_implementation",
+      "private_source_material_used": false,
+      "synthetic_examples_only": true,
+      "inputs": [
+        "current StateWeave adoption, continuity, content, and backup boundaries",
+        "current Gate E capture roadmap",
+        "direct project-owner existing-project user-experience objective"
+      ],
+      "destinations": [
+        "src/stateweave/adoption",
+        "src/stateweave/capture",
+        "src/stateweave/continuity",
+        "src/stateweave/cli.py",
+        "tests/test_adoption.py",
+        "tests/test_capture.py",
+        "docs/adoption-and-capture.md",
+        "docs/decisions/ADR-0004-sidecar-adoption-and-capture-inbox.md",
+        "docs/verification-report-adoption-capture-2026-07-27.md"
+      ],
+      "notes": "Implemented from the merged public StateWeave codebase with synthetic existing-project trees, capture requests, candidates, and cursors. No operational project content, repository history, prompt, transcript, credential, PII, customer artifact, raw log, private receipt, or concrete external-system adapter was copied."
     }
   ],
   "excluded_classes": [

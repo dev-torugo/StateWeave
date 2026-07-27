@@ -10,6 +10,9 @@ outside memory-core and require a separately authorized adapter.
 ## Filesystem controls
 
 - configured paths must remain under the resolved project root;
+- existing-project adoption writes only a fixed sidecar after a hash-bound
+  dry-run, rejects symlinks/ambiguity, and rechecks the host inventory under
+  an adoption lock;
 - record identifiers determine filenames through a closed kind mapping;
 - record reads are bounded by configured byte limits;
 - writes use a temporary sibling, flush, `fsync`, and `os.replace`;
@@ -45,8 +48,8 @@ backlinks, and structured conflicts.
 
 Valid JSON is still untrusted data. The optional content-policy boundary runs a
 bounded traversal at candidate ingress, promotion, mutation-plan handling, and
-retrieval. Codex session preparation and observation ingress use the same
-boundary. The built-in baseline:
+retrieval. Capture request ingestion, Codex session preparation, and
+observation ingress use the same boundary. The built-in baseline:
 
 - blocks obvious credential assignments and private-key markers;
 - never includes the matched credential value in an error;
@@ -84,3 +87,5 @@ data in examples or tests.
   every target operating system.
 - The derived index verifies every source hash and remains O(n) in record
   count; it is an optimization cache, not a signed integrity boundary.
+- Capture source identifiers, locators, cursors, and events are host claims;
+  StateWeave checks consistency and content but does not attest their origin.
