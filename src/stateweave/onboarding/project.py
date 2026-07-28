@@ -74,6 +74,10 @@ def _decision_payload(decision: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _adoption_plan_payload(plan: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in plan.items() if key != "plan_sha256"}
+
+
 def _read_object(path: Path) -> dict[str, Any]:
     if path.is_symlink() or not path.is_file():
         raise RecordError(f"onboarding artifact must be a real file: {path}")
@@ -114,6 +118,116 @@ def _validate_plan(plan: dict[str, Any], source: str | Path) -> list[str]:
                 source=f"{source}:adoption_plan",
             )
         )
+        adoption_digest = sha256_bytes(
+            canonical_json_bytes(_adoption_plan_payload(adoption))
+        )
+        if adoption.get("plan_sha256") != adoption_digest:
+            errors.append(f"{source}: adoption plan digest does not match")
+        if adoption.get("project_id") != plan.get("project_id"):
+            errors.append(f"{source}: adoption project id does not match")
+        if adoption.get("project_name") != plan.get("project_name"):
+            errors.append(f"{source}: adoption project name does not match")
+    actions = plan.get("actions")
+    status_value = plan.get("status")
+    status = status_value if isinstance(status_value, str) else None
+    if isinstance(actions, list):
+        sequences = [
+            action.get("sequence") if isinstance(action, dict) else None
+            for action in actions
+        ]
+        if sequences != list(range(1, len(actions) + 1)):
+            errors.append(f"{source}: onboarding actions are not contiguous")
+        action_codes = [
+            action.get("code") if isinstance(action, dict) else None
+            for action in actions
+        ]
+        adoption_status = adoption.get("status") if isinstance(adoption, dict) else None
+        expected_action_codes = (
+            {
+                "blocked": ["review-plan", "resolve-conflict"],
+                "deferred": ["review-plan", "defer-onboarding"],
+                "complete": ["review-plan"],
+            }.get(status)
+            if status is not None
+            else None
+        )
+        if status == "ready":
+            expected_action_codes = ["review-plan"]
+            if adoption_status == "safe":
+                expected_action_codes.append("create-sidecar")
+            expected_action_codes.append("record-sidecar-policy")
+        if expected_action_codes is not None and action_codes != expected_action_codes:
+            errors.append(f"{source}: actions do not match onboarding status")
+    expected_pending = (
+        {
+            "blocked": [
+                {
+                    "code": "resolve-blocker",
+                    "options": ["inspect-evidence", "abort"],
+                    "requires_human_confirmation": True,
+                }
+            ],
+            "deferred": [
+                {
+                    "code": "confirm-defer",
+                    "options": ["confirm-defer", "change-policy"],
+                    "requires_human_confirmation": True,
+                }
+            ],
+            "ready": [
+                {
+                    "code": "confirm-apply",
+                    "options": ["apply-reviewed-plan", "cancel"],
+                    "requires_human_confirmation": True,
+                }
+            ],
+            "complete": [],
+        }.get(status)
+        if status is not None
+        else None
+    )
+    if (
+        expected_pending is not None
+        and plan.get("pending_decisions") != expected_pending
+    ):
+        errors.append(f"{source}: pending decisions do not match onboarding status")
+    states = plan.get("states")
+    if isinstance(states, list):
+        state_pairs = [
+            (state.get("code"), state.get("value"))
+            for state in states
+            if isinstance(state, dict)
+        ]
+        state_values = dict(state_pairs)
+        if len(state_values) != len(state_pairs):
+            errors.append(f"{source}: onboarding state codes must be unique")
+        expected_states = {
+            "adoption-status": (
+                adoption.get("status") if isinstance(adoption, dict) else None
+            ),
+            "deployment-mode": (
+                adoption.get("deployment_mode") or "unconfigured"
+                if isinstance(adoption, dict)
+                else None
+            ),
+            "sidecar-policy": plan.get("sidecar_policy"),
+            "host-content-inspection": "not-performed",
+        }
+        for code, value in expected_states.items():
+            if state_values.get(code) != value:
+                errors.append(f"{source}: onboarding state {code} does not match")
+    decisions = plan.get("decisions")
+    if isinstance(decisions, list):
+        decision_pairs = [
+            (decision.get("code"), decision.get("choice"))
+            for decision in decisions
+            if isinstance(decision, dict)
+        ]
+        decision_values = dict(decision_pairs)
+        if len(decision_values) != len(decision_pairs):
+            errors.append(f"{source}: onboarding decision codes must be unique")
+        if decision_values.get("sidecar-disposition") != plan.get("sidecar_policy"):
+            errors.append(f"{source}: sidecar disposition does not match")
     digest = sha256_bytes(canonical_json_bytes(_plan_payload(plan)))
     if plan.get("plan_sha256") != digest:
         errors.append(f"{source}: onboarding plan digest does not match")
@@ -250,24 +364,6 @@ def plan_onboarding(
                 "requires_human_confirmation": True,
             }
         )
-    elif sidecar_policy == "defer":
-        status = "complete" if adoption["status"] == "already_adopted" else "deferred"
-        risks.append(
-            {
-                "code": "continuity-deferred",
-                "severity": "warning",
-                "message": "No sidecar will be created and continuity remains unavailable.",
-            }
-        )
-        actions.append(
-            {
-                "sequence": 2,
-                "code": "defer-onboarding",
-                "mutation": "none",
-                "path": None,
-                "requires_human_confirmation": True,
-            }
-        )
     elif adoption["deployment_mode"] == "embedded":
         status = "complete"
         risks.append(
@@ -289,6 +385,54 @@ def plan_onboarding(
                     "message": "A different immutable sidecar policy is already recorded.",
                 }
             )
+            actions.append(
+                {
+                    "sequence": 2,
+                    "code": "resolve-conflict",
+                    "mutation": "none",
+                    "path": None,
+                    "requires_human_confirmation": True,
+                }
+            )
+    elif adoption["status"] == "already_adopted" and sidecar_policy == "defer":
+        status = "blocked"
+        risks.append(
+            {
+                "code": "unrecorded-sidecar-policy",
+                "severity": "block",
+                "message": (
+                    "An existing sidecar has no policy decision; choose tracked "
+                    "or local to record its disposition."
+                ),
+            }
+        )
+        actions.append(
+            {
+                "sequence": 2,
+                "code": "resolve-conflict",
+                "mutation": "none",
+                "path": None,
+                "requires_human_confirmation": True,
+            }
+        )
+    elif sidecar_policy == "defer":
+        status = "deferred"
+        risks.append(
+            {
+                "code": "continuity-deferred",
+                "severity": "warning",
+                "message": "No sidecar will be created and continuity remains unavailable.",
+            }
+        )
+        actions.append(
+            {
+                "sequence": 2,
+                "code": "defer-onboarding",
+                "mutation": "none",
+                "path": None,
+                "requires_human_confirmation": True,
+            }
+        )
     else:
         status = "ready"
         if sidecar_policy == "local":
@@ -325,6 +469,33 @@ def plan_onboarding(
             }
         )
 
+    if status == "blocked":
+        pending_decisions = [
+            {
+                "code": "resolve-blocker",
+                "options": ["inspect-evidence", "abort"],
+                "requires_human_confirmation": True,
+            }
+        ]
+    elif status == "deferred":
+        pending_decisions = [
+            {
+                "code": "confirm-defer",
+                "options": ["confirm-defer", "change-policy"],
+                "requires_human_confirmation": True,
+            }
+        ]
+    elif status == "ready":
+        pending_decisions = [
+            {
+                "code": "confirm-apply",
+                "options": ["apply-reviewed-plan", "cancel"],
+                "requires_human_confirmation": True,
+            }
+        ]
+    else:
+        pending_decisions = []
+
     plan: dict[str, Any] = {
         "schema_version": 1,
         "kind": "onboarding_plan",
@@ -336,6 +507,7 @@ def plan_onboarding(
         "states": states,
         "risks": risks,
         "decisions": decisions,
+        "pending_decisions": pending_decisions,
         "actions": actions,
     }
     digest = sha256_bytes(canonical_json_bytes(_plan_payload(plan)))
@@ -493,6 +665,14 @@ def audit_onboarding(config: ProjectConfig) -> OnboardingReport:
                     report.errors.append(f"{path}: onboarding plan filename mismatch")
                 if not errors and isinstance(plan.get("plan_sha256"), str):
                     plans_by_sha[plan["plan_sha256"]] = plan
+                if plan.get("project_id") != config.project_id:
+                    report.errors.append(
+                        f"{path}: plan project id does not match configuration"
+                    )
+                if plan.get("project_name") != config.project_name:
+                    report.errors.append(
+                        f"{path}: plan project name does not match configuration"
+                    )
                 report.plan_count += 1
 
     policy_path = root / POLICY_FILENAME
@@ -504,6 +684,12 @@ def audit_onboarding(config: ProjectConfig) -> OnboardingReport:
         else:
             errors = _validate_policy(decision, policy_path)
             report.errors.extend(errors)
+            if decision.get("project_id") != config.project_id:
+                report.errors.append(
+                    f"{policy_path}: project id does not match configuration"
+                )
+            if decision.get("reviewer_role") not in config.roles:
+                report.errors.append(f"{policy_path}: reviewer role is not configured")
             plan_sha256 = decision.get("onboarding_plan_sha256")
             referenced = (
                 plans_by_sha.get(plan_sha256) if isinstance(plan_sha256, str) else None
@@ -513,9 +699,17 @@ def audit_onboarding(config: ProjectConfig) -> OnboardingReport:
                     f"{policy_path}: referenced onboarding plan is missing"
                 )
             else:
-                if decision.get("project_id") != config.project_id:
+                if decision.get("project_id") != referenced.get("project_id"):
                     report.errors.append(
-                        f"{policy_path}: project id does not match configuration"
+                        f"{policy_path}: project id differs from its plan"
+                    )
+                if referenced.get("project_id") != config.project_id:
+                    report.errors.append(
+                        f"{policy_path}: plan project id does not match configuration"
+                    )
+                if referenced.get("project_name") != config.project_name:
+                    report.errors.append(
+                        f"{policy_path}: plan project name does not match configuration"
                     )
                 if decision.get("sidecar_policy") != referenced.get("sidecar_policy"):
                     report.errors.append(

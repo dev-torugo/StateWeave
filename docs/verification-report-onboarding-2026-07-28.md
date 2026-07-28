@@ -15,7 +15,7 @@ automatic project scanning, production maturity, or measured model value.
 The repository gate completed with:
 
 ```text
-128 tests passed
+153 tests passed
 backup_created: true
 migration_status: complete
 restored_ok: true
@@ -26,12 +26,20 @@ Focused evidence includes:
 
 - a read-only skill bridge call that produced a deterministic
   `OnboardingPlan` while preserving all host files;
+- fixed-option pending decisions for ready, deferred, blocked, and complete
+  plan states, with no free-form prompt or chat content;
+- immutable sidecar-policy conflicts, including a later request to defer, fail
+  closed instead of masking the recorded disposition;
 - apply refusal without the exact plan digest and human confirmation;
 - tracked, local, and deferred sidecar policy behavior;
 - onboarding plan/policy audit after backup and clean-target restore;
+- adversarial audit binding plan, nested adoption, policy, configured project,
+  and reviewer role;
 - Candidate Inbox list/filter and effective-state derivation;
 - mandatory preview digests for both promotion and rejection;
 - immutable rejection replay and tamper detection;
+- interrupted-promotion effects require promotion reconciliation and cannot be
+  followed by rejection;
 - concurrent promotion and rejection with exactly one durable winner;
 - continuity audit after the concurrent decision.
 

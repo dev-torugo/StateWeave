@@ -562,6 +562,10 @@ def reject_candidate(
         preview = _preview_candidate_unlocked(config, candidate_id)
         if preview["preview_sha256"] != expected_preview_sha256:
             raise RecordError("candidate preview changed; inspect a new preview")
+        if preview["effective_situation"] == "promotion-needs-reconciliation":
+            raise ContractError(
+                f"candidate {candidate_id} promotion requires reconciliation"
+            )
         decision: dict[str, Any] = {
             "schema_version": 1,
             "kind": "candidate_rejection",
@@ -1158,6 +1162,22 @@ def _audit_store(config: ProjectConfig) -> ContinuityReport:
                 report.errors.append(
                     f"{path}: promoted candidate also has a rejection decision"
                 )
+            proposed = rejected_candidate.get("proposed_record")
+            if isinstance(proposed, dict) and isinstance(proposed.get("id"), str):
+                try:
+                    destination = record_destination(config, proposed["id"])
+                except RecordError:
+                    pass
+                else:
+                    expected = rejected_candidate.get("proposed_record_sha256")
+                    if (
+                        destination.is_file()
+                        and not destination.is_symlink()
+                        and sha256_file(destination) == expected
+                    ):
+                        report.errors.append(
+                            f"{path}: rejected candidate result already exists"
+                        )
         report.rejection_count += 1
 
     context_paths, errors = _scan_json_directory(_context_dir(config), CONTEXT_ID)

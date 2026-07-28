@@ -15,6 +15,7 @@
     "states",
     "risks",
     "decisions",
+    "pending_decisions",
     "actions",
     "plan_sha256"
   ],
@@ -66,6 +67,26 @@
           "code": {"$ref": "#/$defs/slug"},
           "choice": {"type": "string", "minLength": 1, "maxLength": 200},
           "basis": {"type": "string", "minLength": 1, "maxLength": 500}
+        },
+        "additionalProperties": false
+      }
+    },
+    "pending_decisions": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "required": ["code", "options", "requires_human_confirmation"],
+        "properties": {
+          "code": {"$ref": "#/$defs/slug"},
+          "options": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 5,
+            "uniqueItems": true,
+            "items": {"$ref": "#/$defs/slug"}
+          },
+          "requires_human_confirmation": {"const": true}
         },
         "additionalProperties": false
       }

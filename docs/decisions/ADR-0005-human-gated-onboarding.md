@@ -11,7 +11,7 @@ filterable Candidate Inbox, or durable rejection evidence.
 ## Decision
 
 - Represent onboarding as a versioned, hash-bound plan with explicit states,
-  risks, decisions, and actions.
+  risks, decisions, pending decisions with fixed options, and ordered actions.
 - Require the operator to choose `tracked`, `local`, or `defer`.
 - Persist applied plans and one immutable sidecar policy decision inside the
   StateWeave extension boundary.

@@ -52,8 +52,14 @@ The Draft 2020-12 `OnboardingPlan` embeds the exact adoption plan and exposes:
 - current states, including deployment and content-inspection state;
 - bounded risks;
 - explicit decisions;
+- pending decision codes with fixed options and human-confirmation requirements;
 - ordered actions and their mutation/confirmation requirements;
 - `ONP-<sha256>` identity and `plan_sha256`.
+
+The semantic validator also binds the nested adoption digest and project
+identity, requires contiguous stable actions, and enforces the pending decision
+set for each plan status. An immutable recorded policy takes precedence over a
+later request to defer onboarding.
 
 The sidecar policy is always supplied by the operator:
 
@@ -126,8 +132,10 @@ stateweave reject-candidate CND-<digest> \
 ```
 
 Rejection uses a bounded reason code, contains no free-form conversation, and
-is immutable and bound to the exact candidate and preview hashes. The existing
-durable candidate promotion remains the only promotion path.
+is immutable and bound to the exact candidate and preview hashes. Rejection is
+refused when the proposed canonical effect already exists after an interrupted
+promotion; the promotion path must reconcile that state. The existing durable
+candidate promotion remains the only promotion path.
 
 ## Audit, backup, and restore
 
@@ -141,9 +149,10 @@ stateweave audit --config ./existing-project
 ```
 
 `audit-onboarding` verifies closed-world paths, plan schemas/digests, policy
-digests, and project/adoption bindings. `audit-continuity` additionally checks
-candidate rejection schemas, filenames, candidate hashes, and
-promotion/rejection conflicts.
+digests, configured reviewer roles, and bidirectional plan/policy/adoption/
+project identity bindings. `audit-continuity` additionally checks candidate
+rejection schemas, filenames, candidate hashes, and promotion/rejection
+conflicts.
 
 Onboarding plans, the sidecar policy decision, candidates, and rejection
 decisions are extension artifacts. Standard backup and clean-target restore

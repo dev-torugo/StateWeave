@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "generated_at": "2026-07-26T03:24:00Z",
-  "last_updated_at": "2026-07-28T14:20:52Z",
+  "last_updated_at": "2026-07-28T16:30:21Z",
   "extraction_mode": "clean_transformation",
   "source_repository": {
     "visibility": "private_local_source",
@@ -279,7 +279,7 @@
         "docs/decisions/ADR-0005-human-gated-onboarding.md",
         "docs/verification-report-onboarding-2026-07-28.md"
       ],
-      "notes": "Implemented with synthetic host projects and candidates only. The plugin stores no prompt, chat, raw log, credential, operational project content, PII, or customer artifact and does not edit AGENTS.md, ignore rules, or VCS state."
+      "notes": "Implemented with synthetic host projects and candidates only, including fixed-option pending decision evidence, immutable-policy conflict handling, and fail-closed promotion reconciliation. The plugin stores no prompt, chat, raw log, credential, operational project content, PII, or customer artifact and does not edit AGENTS.md, ignore rules, or VCS state."
     },
     {
       "date": "2026-07-27",

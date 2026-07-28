@@ -10,8 +10,13 @@ from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Any
 
-from stateweave.adoption import discover_project_config
+from stateweave.adoption import (
+    apply_project_adoption,
+    discover_project_config,
+    plan_project_adoption,
+)
 from stateweave.cli import main
 from stateweave.continuity import (
     audit_continuity,
@@ -24,11 +29,14 @@ from stateweave.continuity import (
 from stateweave.core.backup import create_backup, restore_backup
 from stateweave.core.config import load_config
 from stateweave.core.errors import ContractError, RecordError
+from stateweave.core.io import canonical_json_bytes, sha256_bytes
+from stateweave.core.project import put_record
 from stateweave.onboarding import (
     apply_onboarding_plan,
     audit_onboarding,
     plan_onboarding,
 )
+from stateweave.onboarding import project as onboarding_project
 
 from tests.helpers import fact, project
 from tests.test_continuity import synthetic_provenance, synthetic_source
@@ -47,6 +55,16 @@ class OnboardingPlanTests(unittest.TestCase):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(payload)
         return files
+
+    def _rebind_plan(self, plan: dict[str, Any]) -> None:
+        payload = {
+            key: value
+            for key, value in plan.items()
+            if key not in {"id", "plan_sha256"}
+        }
+        digest = sha256_bytes(canonical_json_bytes(payload))
+        plan["id"] = f"ONP-{digest}"
+        plan["plan_sha256"] = digest
 
     def test_plan_is_read_only_hash_bound_and_explicit_about_risk(self) -> None:
         with TemporaryDirectory() as temporary:
@@ -83,6 +101,22 @@ class OnboardingPlanTests(unittest.TestCase):
                 "local-sidecar-vcs-exposure",
                 {item["code"] for item in first["risks"]},
             )
+            self.assertEqual(
+                first["pending_decisions"],
+                [
+                    {
+                        "code": "confirm-apply",
+                        "options": ["apply-reviewed-plan", "cancel"],
+                        "requires_human_confirmation": True,
+                    }
+                ],
+            )
+            self.assertEqual(
+                [item["sequence"] for item in first["actions"]],
+                list(range(1, len(first["actions"]) + 1)),
+            )
+            self.assertNotIn("prompt", json.dumps(first["pending_decisions"]))
+            self.assertNotIn("chat", json.dumps(first["pending_decisions"]))
             self.assertFalse((root / ".stateweave-project").exists())
             for relative, payload in expected.items():
                 self.assertEqual((root / relative).read_bytes(), payload)
@@ -133,6 +167,36 @@ class OnboardingPlanTests(unittest.TestCase):
             self.assertTrue(report.ok, report.errors)
             self.assertEqual(report.plan_count, 1)
             self.assertEqual(report.policy_decision_count, 1)
+            completed_plan = plan_onboarding(
+                root,
+                project_id="synthetic-host",
+                project_name="Synthetic Host",
+                sidecar_policy="tracked",
+            )
+            self.assertEqual(completed_plan["status"], "complete")
+            self.assertEqual(completed_plan["pending_decisions"], [])
+            conflicting_plan = plan_onboarding(
+                root,
+                project_id="synthetic-host",
+                project_name="Synthetic Host",
+                sidecar_policy="defer",
+            )
+            self.assertEqual(conflicting_plan["status"], "blocked")
+            self.assertIn(
+                "immutable-policy-conflict",
+                {item["code"] for item in conflicting_plan["risks"]},
+            )
+            with self.assertRaisesRegex(RecordError, "blocked"):
+                apply_onboarding_plan(
+                    root,
+                    project_id="synthetic-host",
+                    project_name="Synthetic Host",
+                    sidecar_policy="defer",
+                    expected_plan_sha256=conflicting_plan["plan_sha256"],
+                    decided_at="2026-07-27T20:01:00Z",
+                    reviewer_role="maintainer",
+                    human_confirmed=True,
+                )
             for relative, payload in expected.items():
                 self.assertEqual((root / relative).read_bytes(), payload)
 
@@ -155,6 +219,16 @@ class OnboardingPlanTests(unittest.TestCase):
                 project_name="Synthetic Host",
                 sidecar_policy="defer",
             )
+            self.assertEqual(
+                deferred["pending_decisions"],
+                [
+                    {
+                        "code": "confirm-defer",
+                        "options": ["confirm-defer", "change-policy"],
+                        "requires_human_confirmation": True,
+                    }
+                ],
+            )
             result = apply_onboarding_plan(
                 root,
                 project_id="synthetic-host",
@@ -168,6 +242,69 @@ class OnboardingPlanTests(unittest.TestCase):
             self.assertEqual(result["status"], "deferred")
             self.assertFalse(result["mutated"])
             self.assertFalse((root / ".stateweave-project").exists())
+
+            unrecorded_root = root / "unrecorded"
+            unrecorded_root.mkdir()
+            self._host_project(unrecorded_root)
+            adoption = plan_project_adoption(
+                unrecorded_root,
+                project_id="synthetic-unrecorded",
+                project_name="Synthetic Unrecorded",
+            )
+            apply_project_adoption(
+                unrecorded_root,
+                project_id="synthetic-unrecorded",
+                project_name="Synthetic Unrecorded",
+                expected_plan_sha256=adoption["plan_sha256"],
+                adopted_at="2026-07-27T20:00:00Z",
+                confirmed=True,
+            )
+            recordable = plan_onboarding(
+                unrecorded_root,
+                project_id="synthetic-unrecorded",
+                project_name="Synthetic Unrecorded",
+                sidecar_policy="tracked",
+            )
+            self.assertEqual(recordable["status"], "ready")
+            self.assertEqual(
+                [action["code"] for action in recordable["actions"]],
+                ["review-plan", "record-sidecar-policy"],
+            )
+            unrecorded_defer = plan_onboarding(
+                unrecorded_root,
+                project_id="synthetic-unrecorded",
+                project_name="Synthetic Unrecorded",
+                sidecar_policy="defer",
+            )
+            self.assertEqual(unrecorded_defer["status"], "blocked")
+            self.assertIn(
+                "unrecorded-sidecar-policy",
+                {item["code"] for item in unrecorded_defer["risks"]},
+            )
+
+            blocked_root = root / "blocked"
+            blocked_root.mkdir()
+            (blocked_root / ".stateweave-project").write_text(
+                "synthetic conflict",
+                encoding="utf-8",
+            )
+            blocked = plan_onboarding(
+                blocked_root,
+                project_id="synthetic-blocked",
+                project_name="Synthetic Blocked",
+                sidecar_policy="tracked",
+            )
+            self.assertEqual(blocked["status"], "blocked")
+            self.assertEqual(
+                blocked["pending_decisions"],
+                [
+                    {
+                        "code": "resolve-blocker",
+                        "options": ["inspect-evidence", "abort"],
+                        "requires_human_confirmation": True,
+                    }
+                ],
+            )
 
             tracked = plan_onboarding(
                 root,
@@ -236,6 +373,124 @@ class OnboardingPlanTests(unittest.TestCase):
             self.assertFalse((root / ".stateweave-project").exists())
             for relative, content in expected.items():
                 self.assertEqual((root / relative).read_bytes(), content)
+
+    def test_semantic_plan_validation_rejects_rebound_inconsistencies(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self._host_project(root)
+            original = plan_onboarding(
+                root,
+                project_id="synthetic-host",
+                project_name="Synthetic Host",
+                sidecar_policy="tracked",
+            )
+            mutations = {}
+
+            adoption_digest = json.loads(json.dumps(original))
+            adoption_digest["adoption_plan"]["existing_entry_count"] += 1
+            mutations["nested adoption digest"] = adoption_digest
+
+            identity = json.loads(json.dumps(original))
+            identity["adoption_plan"]["project_name"] = "Different Synthetic Name"
+            adoption_payload = {
+                key: value
+                for key, value in identity["adoption_plan"].items()
+                if key != "plan_sha256"
+            }
+            identity["adoption_plan"]["plan_sha256"] = sha256_bytes(
+                canonical_json_bytes(adoption_payload)
+            )
+            mutations["nested project identity"] = identity
+
+            actions = json.loads(json.dumps(original))
+            actions["actions"][1]["sequence"] = 1
+            mutations["action sequence"] = actions
+
+            pending = json.loads(json.dumps(original))
+            pending["pending_decisions"] = []
+            mutations["pending decisions"] = pending
+
+            for label, mutated in mutations.items():
+                with self.subTest(label=label):
+                    self._rebind_plan(mutated)
+                    errors = onboarding_project._validate_plan(mutated, label)
+                    self.assertTrue(errors)
+                    self.assertTrue(
+                        any(
+                            marker in "; ".join(errors)
+                            for marker in (
+                                "adoption plan digest",
+                                "project name",
+                                "not contiguous",
+                                "pending decisions",
+                            )
+                        ),
+                        errors,
+                    )
+
+    def test_audit_binds_plan_policy_configuration_and_reviewer(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self._host_project(root)
+            plan = plan_onboarding(
+                root,
+                project_id="synthetic-host",
+                project_name="Synthetic Host",
+                sidecar_policy="tracked",
+            )
+            apply_onboarding_plan(
+                root,
+                project_id="synthetic-host",
+                project_name="Synthetic Host",
+                sidecar_policy="tracked",
+                expected_plan_sha256=plan["plan_sha256"],
+                decided_at="2026-07-27T20:00:00Z",
+                reviewer_role="maintainer",
+                human_confirmed=True,
+            )
+            config = load_config(discover_project_config(root))
+            onboarding_root = config.extensions_dir / "onboarding"
+            old_plan_path = onboarding_root / "plans" / f"{plan['id']}.json"
+            foreign = json.loads(old_plan_path.read_text(encoding="utf-8"))
+            foreign["project_id"] = "synthetic-foreign"
+            foreign["project_name"] = "Synthetic Foreign"
+            foreign["adoption_plan"]["project_id"] = "synthetic-foreign"
+            foreign["adoption_plan"]["project_name"] = "Synthetic Foreign"
+            adoption_payload = {
+                key: value
+                for key, value in foreign["adoption_plan"].items()
+                if key != "plan_sha256"
+            }
+            foreign["adoption_plan"]["plan_sha256"] = sha256_bytes(
+                canonical_json_bytes(adoption_payload)
+            )
+            self._rebind_plan(foreign)
+            old_plan_path.unlink()
+            foreign_path = onboarding_root / "plans" / f"{foreign['id']}.json"
+            foreign_path.write_bytes(canonical_json_bytes(foreign))
+
+            policy_path = onboarding_root / "sidecar-policy.json"
+            policy = json.loads(policy_path.read_text(encoding="utf-8"))
+            policy["onboarding_plan_sha256"] = foreign["plan_sha256"]
+            policy["adoption_plan_sha256"] = foreign["adoption_plan"]["plan_sha256"]
+            policy["reviewer_role"] = "unconfigured-reviewer"
+            policy_payload = {
+                key: value
+                for key, value in policy.items()
+                if key not in {"id", "decision_sha256"}
+            }
+            policy_digest = sha256_bytes(canonical_json_bytes(policy_payload))
+            policy["id"] = f"OBD-{policy_digest}"
+            policy["decision_sha256"] = policy_digest
+            policy_path.write_bytes(canonical_json_bytes(policy))
+
+            report = audit_onboarding(config)
+            self.assertFalse(report.ok)
+            observed = "; ".join(report.errors)
+            self.assertIn("plan project id does not match configuration", observed)
+            self.assertIn("plan project name does not match configuration", observed)
+            self.assertIn("project id differs from its plan", observed)
+            self.assertIn("reviewer role is not configured", observed)
 
 
 class CandidateInboxTests(unittest.TestCase):
@@ -505,6 +760,72 @@ class CandidateInboxTests(unittest.TestCase):
             self.assertEqual(
                 report.rejection_count,
                 1 if winners[0] == "rejected" else 0,
+            )
+
+    def test_rejection_cannot_follow_an_interrupted_promotion_effect(self) -> None:
+        with TemporaryDirectory() as temporary:
+            config = project(Path(temporary) / "memory")
+            candidate = self._candidate(
+                config,
+                key="synthetic-interrupted-promotion",
+                identifier="FCT-inbox-interrupted-promotion",
+            )
+            put_record(
+                config,
+                candidate["proposed_record"],
+                idempotency_key=f"promote:{candidate['id']}",
+            )
+            reconciliation = preview_candidate(config, candidate["id"])
+            self.assertEqual(
+                reconciliation["effective_situation"],
+                "promotion-needs-reconciliation",
+            )
+            with self.assertRaisesRegex(ContractError, "requires reconciliation"):
+                reject_candidate(
+                    config,
+                    candidate["id"],
+                    expected_preview_sha256=reconciliation["preview_sha256"],
+                    reason_code="out-of-scope",
+                    reviewer_role="maintainer",
+                    decided_at="2026-07-27T20:50:00Z",
+                    human_approved=True,
+                )
+            promoted = promote_candidate(
+                config,
+                candidate["id"],
+                reviewer_role="maintainer",
+                promoted_at="2026-07-27T20:51:00Z",
+                expected_preview_sha256=reconciliation["preview_sha256"],
+                human_approved=True,
+            )
+            self.assertEqual(promoted["status"], "promoted")
+            self.assertTrue(audit_continuity(config).ok)
+
+            rejected = self._candidate(
+                config,
+                key="synthetic-rejected-effect",
+                identifier="FCT-inbox-rejected-effect",
+            )
+            rejected_preview = preview_candidate(config, rejected["id"])
+            reject_candidate(
+                config,
+                rejected["id"],
+                expected_preview_sha256=rejected_preview["preview_sha256"],
+                reason_code="out-of-scope",
+                reviewer_role="maintainer",
+                decided_at="2026-07-27T20:52:00Z",
+                human_approved=True,
+            )
+            put_record(
+                config,
+                rejected["proposed_record"],
+                idempotency_key="synthetic-invalid-post-rejection-effect",
+            )
+            report = audit_continuity(config)
+            self.assertFalse(report.ok)
+            self.assertIn(
+                "rejected candidate result already exists",
+                "; ".join(report.errors),
             )
 
 

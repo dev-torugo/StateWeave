@@ -14,8 +14,9 @@ project contents as onboarding evidence.
 1. Run `scripts/stateweave_onboarding.py onboarding-plan` with the project
    path, identity, and one explicit `--sidecar-policy` value:
    `tracked`, `local`, or `defer`.
-2. Present the returned status, states, risks, decisions, actions, and
-   `plan_sha256`. Explain that `local` does not edit ignore rules.
+2. Present the returned status, states, risks, decisions, fixed-option
+   `pending_decisions`, actions, and `plan_sha256`. Explain that `local` does
+   not edit ignore rules.
 3. Stop if the plan is blocked. Ask the human to resolve the reported conflict
    outside this skill.
 4. Do not apply until the human explicitly confirms the exact plan and policy.
@@ -44,8 +45,10 @@ contents.
    human requests a recovery point.
 
 Do not batch-confirm candidates. Refresh the preview whenever a digest mismatch
-is reported. A rejection is immutable and bound to the exact candidate hash;
-do not replace or edit its file.
+is reported. If promotion reconciliation is required, rerun promotion with the
+fresh preview; never reject a candidate whose canonical effect already exists.
+A rejection is immutable and bound to the exact candidate hash; do not replace
+or edit its file.
 
 ## Command bridge
 
