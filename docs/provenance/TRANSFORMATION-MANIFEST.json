@@ -289,6 +289,24 @@
         "tests/test_codex_value_experiment.py"
       ],
       "notes": "Replaced POSIX-only executable test fixtures with explicit Python interpreter command prefixes. The real runner still defaults to the codex executable, and no operational prompt, transcript, credential, PII, private log, or external-system implementation was copied."
+    },
+    {
+      "date": "2026-07-27",
+      "base_revision": "f304580f99d53bf639b9cf4f79403adf52459f97",
+      "mode": "repository_native_evaluation",
+      "private_source_material_used": false,
+      "synthetic_examples_only": true,
+      "inputs": [
+        "current StateWeave context, index, audit, transaction, and lock contracts",
+        "current performance and retrieval-quality roadmap",
+        "direct project-owner evaluation objective"
+      ],
+      "destinations": [
+        "scripts/benchmark_context.py",
+        "tests/test_benchmark_script.py",
+        "docs/performance.md"
+      ],
+      "notes": "Implemented from the public StateWeave codebase with a synthetic sparse corpus, explicit relevance judgments, hard negatives, and local thread workloads. No operational record, source-project data, prompt, transcript, credential, PII, customer artifact, private log, or external-system implementation was used."
     }
   ],
   "excluded_classes": [
