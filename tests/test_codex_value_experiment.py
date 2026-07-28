@@ -52,8 +52,8 @@ class CodexValueExperimentTests(unittest.TestCase):
             binary = Path(temporary) / "codex_version_fixture.py"
             binary.write_text(
                 "import sys\n"
-                "print('codex-cli 9.8.7')\n"
-                "print('DO_NOT_PERSIST_VERSION_STDERR', file=sys.stderr)\n",
+                "sys.stdout.buffer.write(b'codex-cli 9.8.7\\n')\n"
+                "sys.stderr.buffer.write(b'DO_NOT_PERSIST_VERSION_STDERR\\n')\n",
                 encoding="utf-8",
             )
 

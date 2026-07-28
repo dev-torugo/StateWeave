@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "generated_at": "2026-07-26T03:24:00Z",
-  "last_updated_at": "2026-07-28T13:09:16Z",
+  "last_updated_at": "2026-07-28T13:40:15Z",
   "extraction_mode": "clean_transformation",
   "source_repository": {
     "visibility": "private_local_source",
@@ -288,7 +288,7 @@
         "scripts/run_codex_value_experiment.py",
         "tests/test_codex_value_experiment.py"
       ],
-      "notes": "Replaced POSIX-only executable test fixtures with explicit Python interpreter command prefixes. The real runner still defaults to the codex executable, and no operational prompt, transcript, credential, PII, private log, or external-system implementation was copied."
+      "notes": "Replaced POSIX-only executable test fixtures with explicit Python interpreter command prefixes and deterministic raw-byte version output across operating systems. The real runner still defaults to the codex executable, and no operational prompt, transcript, credential, PII, private log, or external-system implementation was copied."
     },
     {
       "date": "2026-07-27",
