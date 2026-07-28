@@ -45,8 +45,10 @@ TARGET_MODULE = Path("caixa_ferramentas_interface/domain/risk_calculations.py")
 ARMS = ("none", "full", "bundle", "projection")
 TASKS = ("RQ-K7Q9", "RQ-M4V2", "RQ-P8D6")
 DEFAULT_TIMEOUT_SECONDS = 15 * 60
-MAX_INPUT_TOKENS_PER_RUN = 150_000
-MAX_PILOT_INPUT_TOKENS = 1_000_000
+MAX_INPUT_TOKENS_PER_RUN = 400_000
+MAX_UNCACHED_INPUT_TOKENS_PER_RUN = 100_000
+MAX_CAMPAIGN_INPUT_TOKENS = 12_000_000
+MAX_CAMPAIGN_UNCACHED_INPUT_TOKENS = 3_000_000
 FULL_CONTEXT_LIMIT = 64 * 1024
 SELECTIVE_CONTEXT_LIMIT = 12_000
 RELEVANT_RECORD_POSITIONS = (7, 29, 61, 87)
@@ -424,16 +426,20 @@ def _prompt(task: str, context: dict[str, Any]) -> str:
     )
 
 
-def _usage_from_completed_turn(event: Any, usage: dict[str, int]) -> None:
+def _usage_from_completed_turn(event: Any, usage: dict[str, int]) -> bool:
     if not isinstance(event, dict) or event.get("type") != "turn.completed":
-        return
+        return False
     observed = event.get("usage")
     if not isinstance(observed, dict):
-        return
+        return False
+    parsed: dict[str, int] = {}
     for source, destination in USAGE_FIELDS.items():
         value = observed.get(source)
-        if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
-            usage[destination] = value
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            return False
+        parsed[destination] = value
+    usage.update(parsed)
+    return True
 
 
 def _run_codex(
@@ -505,6 +511,8 @@ def _run_codex(
     event_types: Counter[str] = Counter()
     stream_sha256 = hashlib.sha256()
     discarded_event_count = 0
+    valid_usage_event_count = 0
+    invalid_usage_event_count = 0
     first_event_ms: int | None = None
     first_message_ms: int | None = None
     timed_out = False
@@ -537,7 +545,11 @@ def _run_codex(
             event_type = event.get("type")
             if event_type in ALLOWED_JSONL_EVENTS:
                 event_types[event_type] += 1
-                _usage_from_completed_turn(event, usage)
+                if event_type == "turn.completed":
+                    if _usage_from_completed_turn(event, usage):
+                        valid_usage_event_count += 1
+                    else:
+                        invalid_usage_event_count += 1
                 continue
             if event_type in {"item.started", "item.updated", "item.completed"}:
                 item = event.get("item")
@@ -556,6 +568,13 @@ def _run_codex(
     reader.join(timeout=1)
     process.stdout.close()
     duration_ms = int((time.monotonic() - started) * 1000)
+    usage_valid = (
+        event_types["turn.completed"] == 1
+        and valid_usage_event_count == 1
+        and invalid_usage_event_count == 0
+        and usage["input_tokens"] > 0
+        and usage["cached_input_tokens"] <= usage["input_tokens"]
+    )
     return {
         "exit_code": process.returncode,
         "timed_out": timed_out,
@@ -567,9 +586,11 @@ def _run_codex(
         "discarded_event_count": discarded_event_count,
         "jsonl_sha256": stream_sha256.hexdigest(),
         **usage,
-        "uncached_input_tokens": max(
-            0,
-            usage["input_tokens"] - usage["cached_input_tokens"],
+        "usage_valid": usage_valid,
+        "uncached_input_tokens": (
+            usage["input_tokens"] - usage["cached_input_tokens"]
+            if usage_valid
+            else usage["input_tokens"]
         ),
     }
 
@@ -1003,6 +1024,7 @@ def _one_run(
                 "output_tokens": 10,
                 "reasoning_tokens": 0,
                 "uncached_input_tokens": math.ceil(len(prompt.encode("utf-8")) / 4),
+                "usage_valid": True,
             }
 
         evaluator = _run_hidden_evaluator(workspace, task_name)
@@ -1097,6 +1119,7 @@ def _gate(
     bundle_tokens = median_uncached_input("bundle")
     projection_tokens = median_uncached_input("projection")
     observations_valid = all(all(run["audits"].values()) for run in runs)
+    token_usage_valid = all(run["execution"].get("usage_valid") is True for run in runs)
     observed_cells = [(run["task"], run["arm"], run["repetition"]) for run in runs]
     expected_cells = {
         (task, arm, repetition)
@@ -1157,6 +1180,7 @@ def _gate(
             bundle_to_full_ratio is not None and bundle_to_full_ratio <= 0.70
         ),
         "audits": observations_valid,
+        "token_usage": token_usage_valid,
         "privacy": evaluator_evidence_minimal,
     }
     return {
@@ -1190,6 +1214,26 @@ def _gate(
     }
 
 
+def _token_stop_reason(
+    run: dict[str, Any],
+    *,
+    total_input_tokens: int,
+    total_uncached_input_tokens: int,
+) -> str | None:
+    execution = run["execution"]
+    if execution.get("usage_valid") is not True:
+        return "invalid-token-usage"
+    if execution["input_tokens"] > MAX_INPUT_TOKENS_PER_RUN:
+        return "per-run-input-token-cap"
+    if execution["uncached_input_tokens"] > MAX_UNCACHED_INPUT_TOKENS_PER_RUN:
+        return "per-run-uncached-input-token-cap"
+    if total_input_tokens > MAX_CAMPAIGN_INPUT_TOKENS:
+        return "campaign-input-token-cap"
+    if total_uncached_input_tokens > MAX_CAMPAIGN_UNCACHED_INPUT_TOKENS:
+        return "campaign-uncached-input-token-cap"
+    return None
+
+
 def run_experiment(args: argparse.Namespace) -> dict[str, Any]:
     source_project = Path(args.source_project).resolve()
     source_module = _validate_source(source_project)
@@ -1204,6 +1248,7 @@ def run_experiment(args: argparse.Namespace) -> dict[str, Any]:
         )
     runs: list[dict[str, Any]] = []
     total_input = 0
+    total_uncached_input = 0
     stop_reason: str | None = None
     for repetition in range(args.repetitions):
         for task_index, task_name in enumerate(TASKS):
@@ -1220,12 +1265,15 @@ def run_experiment(args: argparse.Namespace) -> dict[str, Any]:
                 )
                 runs.append(run)
                 input_tokens = run["execution"]["input_tokens"]
+                uncached_input_tokens = run["execution"]["uncached_input_tokens"]
                 total_input += input_tokens
-                if input_tokens > MAX_INPUT_TOKENS_PER_RUN:
-                    stop_reason = "per-run-input-token-cap"
-                    break
-                if total_input > MAX_PILOT_INPUT_TOKENS:
-                    stop_reason = "pilot-input-token-cap"
+                total_uncached_input += uncached_input_tokens
+                stop_reason = _token_stop_reason(
+                    run,
+                    total_input_tokens=total_input,
+                    total_uncached_input_tokens=total_uncached_input,
+                )
+                if stop_reason is not None:
                     break
             if stop_reason:
                 break
@@ -1257,8 +1305,25 @@ def run_experiment(args: argparse.Namespace) -> dict[str, Any]:
         },
         "limits": {
             "timeout_seconds": args.timeout_seconds,
+            "token_threshold_enforcement": "post-execution",
+            "token_threshold_overshoot": "at-most-one-completed-run",
             "per_run_input_tokens": MAX_INPUT_TOKENS_PER_RUN,
-            "pilot_input_tokens": MAX_PILOT_INPUT_TOKENS,
+            "per_run_uncached_input_tokens": MAX_UNCACHED_INPUT_TOKENS_PER_RUN,
+            "campaign_input_tokens": MAX_CAMPAIGN_INPUT_TOKENS,
+            "campaign_uncached_input_tokens": MAX_CAMPAIGN_UNCACHED_INPUT_TOKENS,
+        },
+        "usage_totals": {
+            "input_tokens": sum(run["execution"]["input_tokens"] for run in runs),
+            "cached_input_tokens": sum(
+                run["execution"]["cached_input_tokens"] for run in runs
+            ),
+            "uncached_input_tokens": sum(
+                run["execution"]["uncached_input_tokens"] for run in runs
+            ),
+            "output_tokens": sum(run["execution"]["output_tokens"] for run in runs),
+            "reasoning_tokens": sum(
+                run["execution"]["reasoning_tokens"] for run in runs
+            ),
         },
         "preflight": preflight,
         "stop_reason": stop_reason,
