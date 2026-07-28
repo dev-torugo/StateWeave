@@ -12,11 +12,16 @@ from stateweave.adoption import (
     discover_project_config,
     plan_project_adoption,
 )
-from stateweave.contracts import require_contract, validate_contract
+from stateweave.contracts import validate_contract
 from stateweave.core.backup import project_writer_lock
 from stateweave.core.config import ProjectConfig, load_config
 from stateweave.core.errors import ContractError, RecordError
-from stateweave.core.io import atomic_write_json, canonical_json_bytes, read_json, sha256_bytes
+from stateweave.core.io import (
+    atomic_write_json,
+    canonical_json_bytes,
+    read_json,
+    sha256_bytes,
+)
 
 PACKAGE = "stateweave.onboarding"
 MAX_ONBOARDING_BYTES = 1024 * 1024
@@ -57,9 +62,7 @@ def _plan_dir(config: ProjectConfig) -> Path:
 
 def _plan_payload(plan: dict[str, Any]) -> dict[str, Any]:
     return {
-        key: value
-        for key, value in plan.items()
-        if key not in {"id", "plan_sha256"}
+        key: value for key, value in plan.items() if key not in {"id", "plan_sha256"}
     }
 
 
@@ -248,9 +251,7 @@ def plan_onboarding(
             }
         )
     elif sidecar_policy == "defer":
-        status = (
-            "complete" if adoption["status"] == "already_adopted" else "deferred"
-        )
+        status = "complete" if adoption["status"] == "already_adopted" else "deferred"
         risks.append(
             {
                 "code": "continuity-deferred",
@@ -503,7 +504,10 @@ def audit_onboarding(config: ProjectConfig) -> OnboardingReport:
         else:
             errors = _validate_policy(decision, policy_path)
             report.errors.extend(errors)
-            referenced = plans_by_sha.get(decision.get("onboarding_plan_sha256"))
+            plan_sha256 = decision.get("onboarding_plan_sha256")
+            referenced = (
+                plans_by_sha.get(plan_sha256) if isinstance(plan_sha256, str) else None
+            )
             if referenced is None:
                 report.errors.append(
                     f"{policy_path}: referenced onboarding plan is missing"

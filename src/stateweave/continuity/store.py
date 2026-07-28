@@ -419,9 +419,7 @@ def _preview_candidate_unlocked(
     if current is not None:
         keys.update(current)
     changed_fields = sorted(
-        key
-        for key in keys
-        if current is None or current.get(key) != proposed.get(key)
+        key for key in keys if current is None or current.get(key) != proposed.get(key)
     )
     preview = {
         "candidate_id": candidate_id,
@@ -487,7 +485,10 @@ def list_candidates(
                     continue
                 if operation is not None and candidate["operation"] != operation:
                     continue
-                if source_type is not None and candidate["source"]["type"] != source_type:
+                if (
+                    source_type is not None
+                    and candidate["source"]["type"] != source_type
+                ):
                     continue
                 if (
                     review_required is not None
@@ -1136,17 +1137,24 @@ def _audit_store(config: ProjectConfig) -> ContinuityReport:
             report.errors.append(str(exc))
             continue
         report.errors.extend(_validate_rejection(decision, path))
-        candidate = candidates_by_id.get(decision.get("candidate_id"))
-        if candidate is None:
+        candidate_id = decision.get("candidate_id")
+        rejected_candidate = (
+            candidates_by_id.get(candidate_id)
+            if isinstance(candidate_id, str)
+            else None
+        )
+        if rejected_candidate is None:
             report.errors.append(f"{path}: rejected candidate is missing")
         else:
-            if path.name != f"{candidate['id']}.json":
+            if path.name != f"{rejected_candidate['id']}.json":
                 report.errors.append(
                     f"{path}: candidate rejection filename does not match"
                 )
-            if decision.get("candidate_sha256") != _candidate_sha256(candidate):
+            if decision.get("candidate_sha256") != _candidate_sha256(
+                rejected_candidate
+            ):
                 report.errors.append(f"{path}: rejected candidate digest has drifted")
-            if candidate.get("status") == "promoted":
+            if rejected_candidate.get("status") == "promoted":
                 report.errors.append(
                     f"{path}: promoted candidate also has a rejection decision"
                 )
