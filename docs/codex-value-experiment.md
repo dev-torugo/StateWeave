@@ -30,19 +30,31 @@ The fixed experiment has four arms:
   record identity, revision, score, reasons, sources, and the source bundle
   hash.
 
-It exercises three NumPy-only tasks: shape validation, the valid class domain,
-and output dtype. Each task starts from the same allow-listed implementation
-with a deterministic synthetic defect. Acceptance tests use only generated
-NumPy arrays and do not require QGIS. NumPy must already be available in the
-selected target environment; the experimental runner does not add it as a
-StateWeave production dependency. Clean package-test environments without
-NumPy skip only the two execution-fixture tests while still exercising source
-isolation, context bounds, the CLI boundary, timeout handling, and JSONL
-sanitization.
+It exercises three NumPy-only synthetic regressions identified to the agent
+only by opaque maintenance IDs. The objective and query do not disclose the
+missing project decision. Relevant memory facts bind the opaque ID to the
+contract, while distractors use neutral identifiers and expose no
+ground-truth labels.
 
-The prompt declares retrieved content to be untrusted evidence. The exact
-prompt context hash is stored in the input manifest; the projection is not a
-new public StateWeave contract.
+The acceptance evaluator is held outside the disposable agent workspace and
+runs only after Codex exits. It loads the modified module with
+`python -B -c` and checks generated NumPy cases for non-identical but
+broadcastable dimensions, domain boundaries and an alternate sentinel, and
+output representation plus input immutability. Only the evaluator source
+hash, exit code, duration, and pass/fail result are retained. NumPy must
+already be available in the selected target environment; the experimental
+runner does not add it as a StateWeave production dependency. Clean package
+test environments without NumPy skip only execution-fixture tests while still
+exercising source isolation, context bounds, the CLI boundary, timeout
+handling, and JSONL sanitization.
+
+Before a campaign, a mandatory preflight proves for all three IDs that the
+mutant fails, the deterministic repair passes, the agent workspace contains no
+test or evaluator, the objective and query remain opaque, the bundle retrieves
+all four incident-bound facts, and full context omits relevance/topic labels.
+The prompt still declares retrieved content to be untrusted evidence. The
+exact prompt context hash is stored in the input manifest; the projection is
+not a new public StateWeave contract.
 
 ## Safe dry run
 
@@ -67,9 +79,10 @@ PYTHONPATH=src python3 scripts/run_codex_value_experiment.py \
   --output /tmp/stateweave-codex-pilot.json
 ```
 
-One repetition is the 12-run pilot: three tasks by four arms. After reviewing
-isolation, receipts, token ceilings, and failures, use three repetitions for
-the 36-run campaign. Arms run sequentially in a balanced rotating order.
+One repetition is the 12-run feasibility pilot: three tasks by four arms. It
+can never pass the value gate. After reviewing isolation, preflight, receipts,
+token ceilings, and failures, use three repetitions for the preregistered
+36-run campaign. Arms run sequentially in a balanced rotating order.
 
 ## Persisted evidence
 
@@ -82,7 +95,7 @@ The aggregate output contains only allow-listed evidence:
 - event type counts and process/test exit status;
 - prompt, context, manifest, workspace, session, and source hashes;
 - changed paths and line-count statistics;
-- acceptance-test result and memory/continuity/Codex audit booleans.
+- held-out evaluator hash/result and memory/continuity/Codex audit booleans.
 
 The JSONL stream is parsed in memory. Event content, stdout messages, stderr,
 prompts, transcripts, and reasoning are discarded. Monetary cost is `null`
@@ -95,16 +108,26 @@ limits, not product policy.
 
 ## Decision gate
 
-The report evaluates:
+The primary comparison is preregistered as canonical `bundle` versus `none`;
+the runner does not choose the best memory arm after seeing results. Passing
+requires:
 
-- best memory arm succeeds in at least eight of nine full-campaign runs;
-- memory gains at least two successes over no memory;
-- canonical bundle loses no more than one success against full memory;
-- median canonical-bundle input is at most 70% of full memory;
-- projection loses no more than one success against the canonical bundle and
-  uses at most 80% of its input tokens;
-- every receipt/evaluation/audit and privacy boundary remains valid.
+- real execution with exactly three repetitions, all 36 unique cells, no
+  token-cap stop, and a passing preflight;
+- canonical bundle success in at least eight of nine runs and at least two of
+  three runs for every incident family;
+- a one-sided exact binomial result at or below 0.05 for discordant paired
+  bundle-versus-none outcomes, with more bundle-only wins than none-only wins;
+- median uncached canonical-bundle input at most 70% of full-memory input;
+- every receipt/evaluation/audit and minimal evaluator-evidence boundary to
+  remain valid.
+
+Full memory and the experimental projection remain secondary diagnostics.
+Projection success and its uncached-token ratio are reported but cannot make
+the primary gate pass.
 
 A failed gate is evidence to improve relevance, projection, or concurrency
 before expanding product claims. Dry-run results validate the harness only;
-they are not evidence of model value.
+they are not evidence of model value. The evaluator is operationally held out
+from the agent workspace, not a cryptographic secret from an agent that could
+somehow discover and inspect the harness repository itself.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import importlib.util
 import json
 import sys
@@ -46,31 +47,98 @@ def source_project(root: Path) -> Path:
     return root
 
 
+def gate_run(
+    task: str,
+    arm: str,
+    repetition: int,
+    *,
+    success: bool,
+    uncached_input_tokens: int,
+    evaluator_extra: bool = False,
+) -> dict[str, object]:
+    evaluator: dict[str, object] = {
+        "sha256": "e" * 64,
+        "exit_code": 0 if success else 1,
+        "duration_ms": 1,
+        "passed": success,
+    }
+    if evaluator_extra:
+        evaluator["details"] = "must-not-be-persisted"
+    return {
+        "task": task,
+        "arm": arm,
+        "repetition": repetition,
+        "success": success,
+        "execution": {"uncached_input_tokens": uncached_input_tokens},
+        "audits": {"memory": True, "continuity": True, "codex": True},
+        "evaluator": evaluator,
+    }
+
+
+def full_campaign(
+    *,
+    bundle_successes: set[tuple[str, int]] | None = None,
+    none_successes: set[tuple[str, int]] | None = None,
+    evaluator_extra_cell: tuple[str, str, int] | None = None,
+) -> list[dict[str, object]]:
+    if bundle_successes is None:
+        bundle_successes = {
+            (task, repetition)
+            for task in experiment.TASKS
+            for repetition in range(1, 4)
+        }
+    if none_successes is None:
+        none_successes = set()
+    tokens = {"none": 100, "full": 1_000, "bundle": 600, "projection": 400}
+    runs: list[dict[str, object]] = []
+    for repetition in range(1, 4):
+        for task in experiment.TASKS:
+            for arm in experiment.ARMS:
+                cell = (task, arm, repetition)
+                success = (
+                    (task, repetition) in bundle_successes
+                    if arm == "bundle"
+                    else (task, repetition) in none_successes
+                    if arm == "none"
+                    else False
+                )
+                runs.append(
+                    gate_run(
+                        task,
+                        arm,
+                        repetition,
+                        success=success,
+                        uncached_input_tokens=tokens[arm],
+                        evaluator_extra=cell == evaluator_extra_cell,
+                    )
+                )
+    return runs
+
+
 class CodexValueExperimentTests(unittest.TestCase):
-    def test_codex_cli_version_evidence_is_sanitized(self) -> None:
+    def test_codex_cli_version_fixture_is_byte_stable_and_sanitized(self) -> None:
+        version_bytes = b"codex-cli 9.8.7\n"
         with TemporaryDirectory() as temporary:
             binary = Path(temporary) / "codex_version_fixture.py"
             binary.write_text(
                 "import sys\n"
-                "sys.stdout.buffer.write(b'codex-cli 9.8.7\\n')\n"
+                f"sys.stdout.buffer.write({version_bytes!r})\n"
                 "sys.stderr.buffer.write(b'DO_NOT_PERSIST_VERSION_STDERR\\n')\n",
                 encoding="utf-8",
             )
 
-            observed = experiment._codex_cli_observation([sys.executable, str(binary)])
+            first = experiment._codex_cli_observation([sys.executable, str(binary)])
+            second = experiment._codex_cli_observation([sys.executable, str(binary)])
 
-            self.assertEqual(
-                observed,
-                {
-                    "observed": True,
-                    "implementation": "codex-cli",
-                    "version": "9.8.7",
-                    "version_output_sha256": experiment.sha256_bytes(
-                        b"codex-cli 9.8.7\n"
-                    ),
-                },
-            )
-            encoded = json.dumps(observed)
+            expected = {
+                "observed": True,
+                "implementation": "codex-cli",
+                "version": "9.8.7",
+                "version_output_sha256": experiment.sha256_bytes(version_bytes),
+            }
+            self.assertEqual(first, expected)
+            self.assertEqual(second, expected)
+            encoded = json.dumps(first)
             self.assertNotIn(str(binary), encoded)
             self.assertNotIn("DO_NOT_PERSIST", encoded)
 
@@ -111,8 +179,119 @@ class CodexValueExperimentTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 experiment._validate_source(source)
 
+    def test_workspace_contains_no_test_or_oracle_visible_to_codex(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = source_project(root / "source")
+            for task in experiment.TASKS:
+                with self.subTest(task=task):
+                    workspace = root / task
+                    workspace.mkdir()
+                    experiment._prepare_workspace(source, workspace, task)
+                    self.assertEqual(
+                        set(experiment._tree_snapshot(workspace)),
+                        set(experiment.WORKSPACE_FILES),
+                    )
+                    self.assertTrue(experiment._workspace_ready_for_codex(workspace))
+                    self.assertFalse(
+                        any(
+                            path.name.casefold().startswith("test")
+                            or "oracle" in path.name.casefold()
+                            for path in workspace.rglob("*")
+                            if path.is_file()
+                        )
+                    )
+
+            adversarial = root / "adversarial"
+            adversarial.mkdir()
+            experiment._prepare_workspace(source, adversarial, experiment.TASKS[0])
+            (adversarial / "oracle_hint.txt").write_text("synthetic", encoding="utf-8")
+            self.assertFalse(experiment._workspace_ready_for_codex(adversarial))
+
+    def test_objectives_queries_and_prompts_are_opaque(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for task in experiment.TASKS:
+                with self.subTest(task=task):
+                    config, records = experiment._project_with_memory(root / task, task)
+                    query = experiment._query(task)
+                    bundle = __import__(
+                        "stateweave.context",
+                        fromlist=["compile_context"],
+                    ).compile_context(config, query)
+                    objective = experiment._task_objective(task)
+                    self.assertIn(task, objective)
+                    self.assertEqual(query["objective"], objective)
+                    self.assertEqual(query["terms"], [task])
+                    self.assertFalse(
+                        experiment._contains_forbidden_prompt_term(objective)
+                    )
+                    self.assertFalse(experiment._contains_forbidden_prompt_term(query))
+                    for arm in experiment.ARMS:
+                        prompt = experiment._prompt(
+                            task,
+                            experiment._arm_context(arm, records, bundle),
+                        )
+                        self.assertFalse(
+                            experiment._contains_forbidden_prompt_term(prompt),
+                            (task, arm),
+                        )
+
+    @unittest.skipUnless(
+        NUMPY_AVAILABLE,
+        "the optional target-project NumPy dependency is unavailable",
+    )
+    def test_each_mutant_fails_and_fake_repair_passes_hidden_evaluator(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = source_project(root / "source")
+            for task in experiment.TASKS:
+                with self.subTest(task=task):
+                    workspace = root / task
+                    workspace.mkdir()
+                    experiment._prepare_workspace(source, workspace, task)
+                    mutant = experiment._run_hidden_evaluator(workspace, task)
+                    experiment._apply_fake_success(workspace, task)
+                    repaired = experiment._run_hidden_evaluator(workspace, task)
+                    self.assertFalse(mutant["passed"])
+                    self.assertNotEqual(mutant["exit_code"], 0)
+                    self.assertTrue(repaired["passed"])
+                    self.assertEqual(repaired["exit_code"], 0)
+
+    def test_bundle_recovers_all_four_relevant_ids_for_each_request(self) -> None:
+        expected = experiment._relevant_fact_ids()
+        self.assertEqual(len(expected), 4)
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for task in experiment.TASKS:
+                with self.subTest(task=task):
+                    config, _ = experiment._project_with_memory(root / task, task)
+                    bundle = __import__(
+                        "stateweave.context",
+                        fromlist=["compile_context"],
+                    ).compile_context(config, experiment._query(task))
+                    selected = {item["id"] for item in bundle["items"]}
+                    self.assertTrue(expected <= selected)
+                    self.assertEqual(len(expected & selected), 4)
+
+    def test_full_context_has_no_relevance_or_topic_labels(self) -> None:
+        for task in experiment.TASKS:
+            with self.subTest(task=task):
+                records = experiment._memory_records(task)
+                context = {"kind": "full_synthetic_memory", "records": records}
+                self.assertEqual(len(records), 100)
+                self.assertTrue(
+                    all(set(record) == {"id", "text"} for record in records)
+                )
+                self.assertFalse(
+                    experiment._contains_key(
+                        context,
+                        frozenset({"relevance", "topic"}),
+                    )
+                )
+
     def test_context_arms_are_bounded_and_projection_preserves_bindings(self) -> None:
-        records = experiment._memory_records("shape")
+        records = experiment._memory_records(experiment.TASKS[0])
         self.assertEqual(len(records), 100)
         self.assertLessEqual(
             len(experiment.canonical_json_bytes(records)),
@@ -127,10 +306,10 @@ class CodexValueExperimentTests(unittest.TestCase):
                     "record_kind": "fact",
                     "revision_sha256": "b" * 64,
                     "score": 10,
-                    "reasons": ["term:shape:body"],
+                    "reasons": ["term:RQ-K7Q9:body"],
                     "content": {
-                        "title": "Shape",
-                        "statement": "Reject mismatch.",
+                        "title": "Reference note",
+                        "statement": "Synthetic evidence.",
                         "claim": {},
                         "sources": [],
                     },
@@ -149,47 +328,136 @@ class CodexValueExperimentTests(unittest.TestCase):
         NUMPY_AVAILABLE,
         "the optional target-project NumPy dependency is unavailable",
     )
-    def test_fake_executor_repairs_all_three_seeded_defects(self) -> None:
+    def test_one_repetition_dry_run_succeeds_12_of_12_but_gate_is_pilot_only(
+        self,
+    ) -> None:
         with TemporaryDirectory() as temporary:
             source = source_project(Path(temporary) / "source")
-            for task in experiment.TASKS:
-                workspace = Path(temporary) / task
-                workspace.mkdir()
-                experiment._prepare_workspace(source, workspace, task)
-                before = experiment._tree_snapshot(workspace)
-                experiment._apply_fake_success(workspace, task)
-                tests = experiment._run_tests(workspace)
-                changed = experiment._changed_paths(
-                    before,
-                    experiment._tree_snapshot(workspace),
-                )
-                self.assertTrue(tests["passed"], task)
-                self.assertEqual(changed, [experiment.TARGET_MODULE.as_posix()])
-
-    @unittest.skipUnless(
-        NUMPY_AVAILABLE,
-        "the optional target-project NumPy dependency is unavailable",
-    )
-    def test_dry_run_closes_bridge_without_persisting_content(self) -> None:
-        with TemporaryDirectory() as temporary:
-            source = source_project(Path(temporary) / "source")
-            run = experiment._one_run(
-                source,
-                task_name="shape",
-                arm="bundle",
-                repetition=1,
+            args = argparse.Namespace(
+                source_project=str(source),
                 execute=False,
-                fake_failure=False,
                 model="unused",
+                repetitions=1,
                 timeout_seconds=30,
+                fake_failure=False,
+            )
+            with patch.object(
+                experiment,
+                "_codex_cli_observation",
+                return_value={
+                    "observed": False,
+                    "implementation": None,
+                    "version": None,
+                    "version_output_sha256": None,
+                },
+            ):
+                report = experiment.run_experiment(args)
+
+            self.assertEqual(report["mode"], "dry-run")
+            self.assertEqual(report["design"]["planned_runs"], 12)
+            self.assertEqual(len(report["runs"]), 12)
+            self.assertEqual(sum(run["success"] for run in report["runs"]), 12)
+            self.assertTrue(report["preflight"]["passed"])
+            self.assertTrue(report["source_baseline"]["unchanged"])
+            self.assertFalse(report["gate"]["passed"])
+            self.assertFalse(report["gate"]["checks"]["real_three_repetition_campaign"])
+            self.assertFalse(report["gate"]["checks"]["all_36_cells_complete"])
+            encoded = json.dumps(report)
+            self.assertNotIn("<STATEWEAVE_CONTEXT>", encoded)
+            self.assertNotIn("HIDDEN_EVALUATOR_SOURCE", encoded)
+            self.assertTrue(
+                all(
+                    set(run["evaluator"])
+                    == {"sha256", "exit_code", "duration_ms", "passed"}
+                    for run in report["runs"]
+                )
             )
 
-            self.assertTrue(run["success"])
-            self.assertTrue(all(run["audits"].values()))
-            self.assertIsNone(run["monetary_cost"])
-            encoded = json.dumps(run)
-            self.assertNotIn("<STATEWEAVE_CONTEXT>", encoded)
-            self.assertNotIn("different shapes using ValueError", encoded)
+    def test_gate_rejects_incomplete_campaign(self) -> None:
+        runs = full_campaign()[:12]
+        gate = experiment._gate(
+            runs,
+            execute=True,
+            repetitions=3,
+            stop_reason=None,
+            preflight={"passed": True},
+        )
+        self.assertFalse(gate["passed"])
+        self.assertFalse(gate["checks"]["all_36_cells_complete"])
+
+    def test_gate_uses_bundle_as_primary_paired_binomial_evidence(self) -> None:
+        gate = experiment._gate(
+            full_campaign(),
+            execute=True,
+            repetitions=3,
+            stop_reason=None,
+            preflight={"passed": True},
+        )
+        self.assertTrue(gate["passed"])
+        self.assertEqual(gate["successes"]["bundle"], 9)
+        self.assertEqual(gate["successes"]["none"], 0)
+        self.assertEqual(gate["successes"]["full"], 0)
+        self.assertEqual(gate["successes"]["projection"], 0)
+        self.assertEqual(
+            gate["bundle_successes_by_task"],
+            {task: 3 for task in experiment.TASKS},
+        )
+        self.assertEqual(
+            gate["paired_bundle_vs_none"],
+            {
+                "wins": 9,
+                "losses": 0,
+                "one_sided_binomial_pvalue": 1 / 512,
+            },
+        )
+        self.assertTrue(gate["checks"]["bundle_paired_advantage"])
+        self.assertEqual(gate["uncached_token_ratios"]["bundle_to_full"], 0.6)
+
+    def test_aggregate_bundle_advantage_without_significant_pairing_fails(
+        self,
+    ) -> None:
+        all_cells = [
+            (task, repetition)
+            for task in experiment.TASKS
+            for repetition in range(1, 4)
+        ]
+        bundle_successes = set(all_cells[:-1])
+        none_successes = {
+            (task, repetition) for task in experiment.TASKS for repetition in (1, 2)
+        }
+        gate = experiment._gate(
+            full_campaign(
+                bundle_successes=bundle_successes,
+                none_successes=none_successes,
+            ),
+            execute=True,
+            repetitions=3,
+            stop_reason=None,
+            preflight={"passed": True},
+        )
+        self.assertEqual(gate["successes"]["bundle"], 8)
+        self.assertEqual(gate["successes"]["none"], 6)
+        self.assertTrue(gate["checks"]["bundle_success_at_least_8_of_9"])
+        self.assertTrue(gate["checks"]["bundle_success_in_each_task"])
+        self.assertEqual(gate["paired_bundle_vs_none"]["wins"], 2)
+        self.assertEqual(gate["paired_bundle_vs_none"]["losses"], 0)
+        self.assertEqual(
+            gate["paired_bundle_vs_none"]["one_sided_binomial_pvalue"],
+            0.25,
+        )
+        self.assertFalse(gate["checks"]["bundle_paired_advantage"])
+        self.assertFalse(gate["passed"])
+
+    def test_gate_requires_minimal_evaluator_evidence(self) -> None:
+        gate = experiment._gate(
+            full_campaign(evaluator_extra_cell=(experiment.TASKS[0], "bundle", 1)),
+            execute=True,
+            repetitions=3,
+            stop_reason=None,
+            preflight={"passed": True},
+        )
+        self.assertFalse(gate["checks"]["privacy"])
+        self.assertFalse(gate["passed"])
 
     def test_cli_requires_explicit_execute_for_real_codex(self) -> None:
         payload = {
@@ -219,10 +487,7 @@ class CodexValueExperimentTests(unittest.TestCase):
             error = StringIO()
             with (
                 redirect_stdout(StringIO()),
-                patch.object(
-                    experiment,
-                    "run_experiment",
-                ) as mocked,
+                patch.object(experiment, "run_experiment") as mocked,
                 self.assertRaises(SystemExit),
                 redirect_stderr(error),
             ):

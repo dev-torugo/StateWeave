@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "generated_at": "2026-07-26T03:24:00Z",
-  "last_updated_at": "2026-07-28T13:40:15Z",
+  "last_updated_at": "2026-07-28T14:20:52Z",
   "extraction_mode": "clean_transformation",
   "source_repository": {
     "visibility": "private_local_source",
@@ -307,6 +307,24 @@
         "docs/performance.md"
       ],
       "notes": "Implemented from the public StateWeave codebase with a synthetic sparse corpus, explicit relevance judgments, hard negatives, and local thread workloads. No operational record, source-project data, prompt, transcript, credential, PII, customer artifact, private log, or external-system implementation was used."
+    },
+    {
+      "date": "2026-07-28",
+      "base_revision": "1f105503bc9a30f8d934c433d2a550184d84976e",
+      "mode": "repository_native_experiment_remediation",
+      "private_source_material_used": false,
+      "synthetic_examples_only": true,
+      "inputs": [
+        "current experimental Codex value harness",
+        "adversarial methodological review of task-contract leakage",
+        "direct project-owner operational-value experiment objective"
+      ],
+      "destinations": [
+        "scripts/run_codex_value_experiment.py",
+        "tests/test_codex_value_experiment.py",
+        "docs/codex-value-experiment.md"
+      ],
+      "notes": "Replaced self-revealing objectives and in-workspace acceptance tests with opaque synthetic incident identifiers, a post-execution held-out evaluator, a mandatory leakage preflight, and a preregistered paired gate. No source-project content, prompt, transcript, Codex message, reasoning, credential, PII, private log, or evaluator output is persisted."
     }
   ],
   "excluded_classes": [
