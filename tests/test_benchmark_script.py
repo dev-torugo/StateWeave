@@ -60,7 +60,11 @@ class BenchmarkScriptTests(unittest.TestCase):
             "total_records_including_state",
         )
         self.assertEqual(result["records"], 10)
-        self.assertEqual(result["records_after_mutation"], 11)
+        self.assertEqual(result["records_after_mutation"], 10)
+        self.assertEqual(
+            result["mutation_operation"],
+            "revisioned_state_overwrite",
+        )
         self.assertEqual(result["selected_items"], 8)
         self.assertGreater(result["context_scan"]["p95_ms"], 0)
         self.assertGreater(result["context_indexed"]["p95_ms"], 0)

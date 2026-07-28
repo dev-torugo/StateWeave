@@ -593,17 +593,25 @@ def benchmark_size(size: int, repeats: int) -> dict[str, Any]:
         if scanned != indexed:
             raise RuntimeError("indexed context differs from canonical scan")
 
-        mutation = synthetic_fact("FCT-benchmark-mutation", size)
+        mutation = read_json(
+            config.state_file,
+            max_bytes=config.limits.max_record_bytes,
+        )
+        mutation_revision = sha256_file(config.state_file)
+        mutation["updated_at"] = "2026-07-28T00:00:00Z"
         mutation_started = time.perf_counter()
         put_record(
             config,
             mutation,
+            overwrite=True,
+            expected_sha256=mutation_revision,
             idempotency_key=f"benchmark-mutation-{size}",
         )
         mutation_seconds = time.perf_counter() - mutation_started
         return {
             "records": size,
-            "records_after_mutation": size + 1,
+            "records_after_mutation": size,
+            "mutation_operation": "revisioned_state_overwrite",
             "setup_seconds": round(setup_seconds, 6),
             "audit": duration_summary(audit_samples),
             "context_scan": duration_summary(scan_samples),

@@ -13,11 +13,13 @@ size run measures:
 - canonical context scan;
 - derived index build;
 - verified-index context compilation;
-- one durable idempotent fact mutation after the sized measurements.
+- one durable idempotent, revision-checked `STATE-current` overwrite after the
+  sized measurements.
 
 The result reports the initial count as `records` and the post-mutation count
-as `records_after_mutation`. It also requires the scan and indexed bundles to
-be byte-for-byte equivalent.
+as `records_after_mutation`; both remain equal because the overwrite must also
+work at the configured 10,000-record ceiling. It also requires the scan and
+indexed bundles to be byte-for-byte equivalent.
 
 The same invocation runs a retrieval-quality evaluation whose corpus size is
 configurable with `--evaluation-size` and defaults to 1,000 canonical records.
@@ -112,6 +114,21 @@ bundle equivalence is a separate mandatory invariant. This synthetic fixture
 passed the gate and invariant, but the values do not establish real-world
 retrieval quality or semantic understanding.
 
+## 10,000-record execution
+
+A separate one-repeat run on 2026-07-28 exercised exactly 10,000 canonical
+records, including `STATE-current`. The revision-checked state overwrite kept
+the post-mutation count at the configured 10,000-record ceiling.
+
+| Records | Full audit | Context scan | Index build | Indexed context | Mutation |
+|---:|---:|---:|---:|---:|---:|
+| 10,000 | 27.924 s | 34.931 s | 21.528 s | 7.928 s | 7.722 s |
+
+This is one local observation, not a percentile or an SLO. It confirms that
+the current verified index materially reduces lookup time for this sparse
+fixture while full validation, hashing, and durable mutation remain expensive
+and linear at 10,000 records.
+
 ## Historical single-reader timing
 
 The earlier 2026-07-27 local timing used the version 1 size semantics, where
@@ -133,7 +150,7 @@ claim.
 
 ## Remaining evaluation work
 
-- rerun the full size matrix with version 2 semantics and retained environment
+- rerun the full size matrix with multiple repeats and retained environment
   metadata;
 - separate cold and warm filesystem-cache measurements;
 - measure actual changing-record writes and explicit index rebuilds;
