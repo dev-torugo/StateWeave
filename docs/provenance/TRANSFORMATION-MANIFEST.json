@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "generated_at": "2026-07-26T03:24:00Z",
-  "last_updated_at": "2026-07-28T03:10:00Z",
+  "last_updated_at": "2026-07-28T14:20:52Z",
   "extraction_mode": "clean_transformation",
   "source_repository": {
     "visibility": "private_local_source",
@@ -284,6 +284,41 @@
     {
       "date": "2026-07-27",
       "base_revision": "f304580f99d53bf639b9cf4f79403adf52459f97",
+      "mode": "repository_native_experimental_host",
+      "private_source_material_used": false,
+      "synthetic_examples_only": true,
+      "inputs": [
+        "current public StateWeave Codex bridge and context contracts",
+        "one operator-selected allow-listed Python module read only at runtime",
+        "direct project-owner operational-value experiment request"
+      ],
+      "destinations": [
+        "scripts/run_codex_value_experiment.py",
+        "tests/test_codex_value_experiment.py",
+        "docs/codex-value-experiment.md",
+        "docs/codex-bridge.md"
+      ],
+      "notes": "The repository stores only the generic runner, synthetic tasks, and synthetic memory. Runtime copies are temporary and restricted to one textual allow-list path. Prompts, Codex JSONL, messages, reasoning, operational records, binaries, credentials, PII, and source-project content are not persisted."
+    },
+    {
+      "date": "2026-07-28",
+      "base_revision": "18ed22be0f79dd314b1735caa954b398d3214da1",
+      "mode": "repository_native_ci_remediation",
+      "private_source_material_used": false,
+      "synthetic_examples_only": true,
+      "inputs": [
+        "current experimental Codex host command boundary",
+        "public GitHub pull request 5 hosted Windows CI failure evidence"
+      ],
+      "destinations": [
+        "scripts/run_codex_value_experiment.py",
+        "tests/test_codex_value_experiment.py"
+      ],
+      "notes": "Replaced POSIX-only executable test fixtures with explicit Python interpreter command prefixes and deterministic raw-byte version output across operating systems. The real runner still defaults to the codex executable, and no operational prompt, transcript, credential, PII, private log, or external-system implementation was copied."
+    },
+    {
+      "date": "2026-07-27",
+      "base_revision": "f304580f99d53bf639b9cf4f79403adf52459f97",
       "mode": "repository_native_evaluation",
       "private_source_material_used": false,
       "synthetic_examples_only": true,
@@ -298,6 +333,24 @@
         "docs/performance.md"
       ],
       "notes": "Implemented from the public StateWeave codebase with a synthetic sparse corpus, explicit relevance judgments, hard negatives, and local thread workloads. No operational record, source-project data, prompt, transcript, credential, PII, customer artifact, private log, or external-system implementation was used."
+    },
+    {
+      "date": "2026-07-28",
+      "base_revision": "1f105503bc9a30f8d934c433d2a550184d84976e",
+      "mode": "repository_native_experiment_remediation",
+      "private_source_material_used": false,
+      "synthetic_examples_only": true,
+      "inputs": [
+        "current experimental Codex value harness",
+        "adversarial methodological review of task-contract leakage",
+        "direct project-owner operational-value experiment objective"
+      ],
+      "destinations": [
+        "scripts/run_codex_value_experiment.py",
+        "tests/test_codex_value_experiment.py",
+        "docs/codex-value-experiment.md"
+      ],
+      "notes": "Replaced self-revealing objectives and in-workspace acceptance tests with opaque synthetic incident identifiers, a post-execution held-out evaluator, a mandatory leakage preflight, and a preregistered paired gate. No source-project content, prompt, transcript, Codex message, reasoning, credential, PII, private log, or evaluator output is persisted."
     }
   ],
   "excluded_classes": [
