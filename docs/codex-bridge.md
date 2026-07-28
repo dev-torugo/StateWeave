@@ -133,3 +133,9 @@ After restore, rerun all three audits.
 - There is no automatic filesystem, Git, CI, or runtime watcher.
 - The implemented integration is proven with synthetic hosts and contracts,
   not with an operational Codex execution.
+
+The repository also contains an explicitly experimental, local-only
+`codex exec` value harness in `scripts/run_codex_value_experiment.py`. Its
+privacy boundary, four-arm design, token metrics, and decision gate are
+documented in `docs/codex-value-experiment.md`. The harness does not change
+the supported bridge boundary described above.

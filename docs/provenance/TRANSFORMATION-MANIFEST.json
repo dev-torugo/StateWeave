@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "generated_at": "2026-07-26T03:24:00Z",
-  "last_updated_at": "2026-07-27T18:00:00Z",
+  "last_updated_at": "2026-07-27T23:21:35Z",
   "extraction_mode": "clean_transformation",
   "source_repository": {
     "visibility": "private_local_source",
@@ -254,6 +254,25 @@
         "docs/verification-report-adoption-capture-2026-07-27.md"
       ],
       "notes": "Implemented from the merged public StateWeave codebase with synthetic existing-project trees, capture requests, candidates, and cursors. No operational project content, repository history, prompt, transcript, credential, PII, customer artifact, raw log, private receipt, or concrete external-system adapter was copied."
+    },
+    {
+      "date": "2026-07-27",
+      "base_revision": "f304580f99d53bf639b9cf4f79403adf52459f97",
+      "mode": "repository_native_experimental_host",
+      "private_source_material_used": false,
+      "synthetic_examples_only": true,
+      "inputs": [
+        "current public StateWeave Codex bridge and context contracts",
+        "one operator-selected allow-listed Python module read only at runtime",
+        "direct project-owner operational-value experiment request"
+      ],
+      "destinations": [
+        "scripts/run_codex_value_experiment.py",
+        "tests/test_codex_value_experiment.py",
+        "docs/codex-value-experiment.md",
+        "docs/codex-bridge.md"
+      ],
+      "notes": "The repository stores only the generic runner, synthetic tasks, and synthetic memory. Runtime copies are temporary and restricted to one textual allow-list path. Prompts, Codex JSONL, messages, reasoning, operational records, binaries, credentials, PII, and source-project content are not persisted."
     }
   ],
   "excluded_classes": [
