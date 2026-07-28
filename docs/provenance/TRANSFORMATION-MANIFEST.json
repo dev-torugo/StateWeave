@@ -280,6 +280,24 @@
         "docs/verification-report-onboarding-2026-07-28.md"
       ],
       "notes": "Implemented with synthetic host projects and candidates only. The plugin stores no prompt, chat, raw log, credential, operational project content, PII, or customer artifact and does not edit AGENTS.md, ignore rules, or VCS state."
+    },
+    {
+      "date": "2026-07-27",
+      "base_revision": "f304580f99d53bf639b9cf4f79403adf52459f97",
+      "mode": "repository_native_evaluation",
+      "private_source_material_used": false,
+      "synthetic_examples_only": true,
+      "inputs": [
+        "current StateWeave context, index, audit, transaction, and lock contracts",
+        "current performance and retrieval-quality roadmap",
+        "direct project-owner evaluation objective"
+      ],
+      "destinations": [
+        "scripts/benchmark_context.py",
+        "tests/test_benchmark_script.py",
+        "docs/performance.md"
+      ],
+      "notes": "Implemented from the public StateWeave codebase with a synthetic sparse corpus, explicit relevance judgments, hard negatives, and local thread workloads. No operational record, source-project data, prompt, transcript, credential, PII, customer artifact, private log, or external-system implementation was used."
     }
   ],
   "excluded_classes": [
