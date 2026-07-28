@@ -12,7 +12,6 @@ import argparse
 import hashlib
 import json
 import math
-import os
 import queue
 import re
 import subprocess
@@ -41,9 +40,7 @@ from stateweave.core.project import initialize_project
 from stateweave.orchestration import manifest_digest
 from stateweave.policy import load_policy_pack
 
-ALLOWLISTED_MODULE = Path(
-    "caixa_ferramentas_interface/domain/risk_calculations.py"
-)
+ALLOWLISTED_MODULE = Path("caixa_ferramentas_interface/domain/risk_calculations.py")
 TARGET_MODULE = Path("caixa_ferramentas_interface/domain/risk_calculations.py")
 ARMS = ("none", "full", "bundle", "projection")
 TASKS = ("shape", "valid-domain", "dtype")
@@ -108,9 +105,7 @@ def _changed_paths(
     after: dict[str, str],
 ) -> list[str]:
     return sorted(
-        path
-        for path in set(before) | set(after)
-        if before.get(path) != after.get(path)
+        path for path in set(before) | set(after) if before.get(path) != after.get(path)
     )
 
 
@@ -140,7 +135,9 @@ def _validate_source(source_project: Path) -> Path:
                 f"{ALLOWLISTED_MODULE}"
             )
     if not module.is_file():
-        raise ValueError(f"allow-listed source module is unavailable: {ALLOWLISTED_MODULE}")
+        raise ValueError(
+            f"allow-listed source module is unavailable: {ALLOWLISTED_MODULE}"
+        )
     if module.stat().st_size > 64 * 1024:
         raise ValueError("allow-listed source module exceeds 64 KiB")
     return module
@@ -203,7 +200,9 @@ def _prepare_workspace(source_project: Path, destination: Path, task: str) -> No
     text = target.read_text(encoding="utf-8")
     if task == "valid-domain":
         if text.count("<= 3") < 2:
-            raise ValueError("source module no longer exposes the expected synthetic seam")
+            raise ValueError(
+                "source module no longer exposes the expected synthetic seam"
+            )
         text = text.replace("<= 3", "<= 4")
     elif task == "dtype":
         if "dtype=np.int16" not in text:
@@ -619,11 +618,13 @@ def _apply_fake_success(workspace: Path, task: str) -> None:
     target = workspace / TARGET_MODULE
     text = target.read_text(encoding="utf-8")
     if task == "shape":
-        marker = "def merge_threat_arrays(threat_1_arr, threat_2_arr, out_nodata=-9999):\n"
+        marker = (
+            "def merge_threat_arrays(threat_1_arr, threat_2_arr, out_nodata=-9999):\n"
+        )
         replacement = (
             marker
             + "    if threat_1_arr.shape != threat_2_arr.shape:\n"
-            + "        raise ValueError(\"threat arrays must have matching shapes\")\n"
+            + '        raise ValueError("threat arrays must have matching shapes")\n'
         )
         text = text.replace(marker, replacement, 1)
     elif task == "valid-domain":
@@ -751,9 +752,7 @@ def _record_bridge_result(
         "input_manifest_sha256": manifest_digest(session["input_manifest"]),
         "context_sha256": session["context_sha256"],
         "outputs": (
-            [{"name": "workspace", "sha256": workspace_sha256}]
-            if success
-            else []
+            [{"name": "workspace", "sha256": workspace_sha256}] if success else []
         ),
         "effects": [
             {
@@ -883,9 +882,7 @@ def _one_run(
                 "cached_input_tokens": 0,
                 "output_tokens": 10,
                 "reasoning_tokens": 0,
-                "uncached_input_tokens": math.ceil(
-                    len(prompt.encode("utf-8")) / 4
-                ),
+                "uncached_input_tokens": math.ceil(len(prompt.encode("utf-8")) / 4),
             }
 
         tests = _run_tests(workspace)
@@ -949,14 +946,11 @@ def _gate(runs: list[dict[str, Any]]) -> dict[str, Any]:
         arm: [run for run in runs if run["arm"] == arm] for arm in ARMS
     }
     success_counts = {
-        arm: sum(run["success"] for run in arm_runs)
-        for arm, arm_runs in by_arm.items()
+        arm: sum(run["success"] for run in arm_runs) for arm, arm_runs in by_arm.items()
     }
 
     def median_input(arm: str) -> int | None:
-        values = sorted(
-            run["execution"]["input_tokens"] for run in by_arm[arm]
-        )
+        values = sorted(run["execution"]["input_tokens"] for run in by_arm[arm])
         if not values:
             return None
         return values[len(values) // 2]
@@ -994,9 +988,7 @@ def _gate(runs: list[dict[str, Any]]) -> dict[str, Any]:
         "passed": all(checks.values()),
         "checks": checks,
         "successes": success_counts,
-        "median_input_tokens": {
-            arm: median_input(arm) for arm in ARMS
-        },
+        "median_input_tokens": {arm: median_input(arm) for arm in ARMS},
     }
 
 
@@ -1006,7 +998,9 @@ def run_experiment(args: argparse.Namespace) -> dict[str, Any]:
     source_before = _sha256_path(source_module)
     cli_observation = _codex_cli_observation()
     if args.execute and not cli_observation["observed"]:
-        raise RuntimeError("real Codex execution requires a recognized codex-cli version")
+        raise RuntimeError(
+            "real Codex execution requires a recognized codex-cli version"
+        )
     runs: list[dict[str, Any]] = []
     total_input = 0
     stop_reason: str | None = None

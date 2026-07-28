@@ -33,7 +33,12 @@ The fixed experiment has four arms:
 It exercises three NumPy-only tasks: shape validation, the valid class domain,
 and output dtype. Each task starts from the same allow-listed implementation
 with a deterministic synthetic defect. Acceptance tests use only generated
-NumPy arrays and do not require QGIS.
+NumPy arrays and do not require QGIS. NumPy must already be available in the
+selected target environment; the experimental runner does not add it as a
+StateWeave production dependency. Clean package-test environments without
+NumPy skip only the two execution-fixture tests while still exercising source
+isolation, context bounds, the CLI boundary, timeout handling, and JSONL
+sanitization.
 
 The prompt declares retrieved content to be untrusted evidence. The exact
 prompt context hash is stored in the input manifest; the projection is not a

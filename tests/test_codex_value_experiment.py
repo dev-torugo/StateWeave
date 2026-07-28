@@ -12,14 +12,13 @@ from unittest.mock import patch
 
 
 SCRIPT = (
-    Path(__file__).resolve().parents[1]
-    / "scripts"
-    / "run_codex_value_experiment.py"
+    Path(__file__).resolve().parents[1] / "scripts" / "run_codex_value_experiment.py"
 )
 SPEC = importlib.util.spec_from_file_location("codex_value_experiment", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 experiment = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(experiment)
+NUMPY_AVAILABLE = importlib.util.find_spec("numpy") is not None
 
 
 MODULE_SOURCE = """\
@@ -147,6 +146,10 @@ class CodexValueExperimentTests(unittest.TestCase):
         )
         self.assertNotIn("content", projection["items"][0])
 
+    @unittest.skipUnless(
+        NUMPY_AVAILABLE,
+        "the optional target-project NumPy dependency is unavailable",
+    )
     def test_fake_executor_repairs_all_three_seeded_defects(self) -> None:
         with TemporaryDirectory() as temporary:
             source = source_project(Path(temporary) / "source")
@@ -164,6 +167,10 @@ class CodexValueExperimentTests(unittest.TestCase):
                 self.assertTrue(tests["passed"], task)
                 self.assertEqual(changed, [experiment.TARGET_MODULE.as_posix()])
 
+    @unittest.skipUnless(
+        NUMPY_AVAILABLE,
+        "the optional target-project NumPy dependency is unavailable",
+    )
     def test_dry_run_closes_bridge_without_persisting_content(self) -> None:
         with TemporaryDirectory() as temporary:
             source = source_project(Path(temporary) / "source")
@@ -211,10 +218,15 @@ class CodexValueExperimentTests(unittest.TestCase):
         with TemporaryDirectory() as temporary:
             source = source_project(Path(temporary) / "source")
             error = StringIO()
-            with redirect_stdout(StringIO()), patch.object(
-                experiment,
-                "run_experiment",
-            ) as mocked, self.assertRaises(SystemExit), redirect_stderr(error):
+            with (
+                redirect_stdout(StringIO()),
+                patch.object(
+                    experiment,
+                    "run_experiment",
+                ) as mocked,
+                self.assertRaises(SystemExit),
+                redirect_stderr(error),
+            ):
                 experiment.main(
                     [
                         "--source-project",
@@ -231,9 +243,7 @@ class CodexValueExperimentTests(unittest.TestCase):
             root = Path(temporary)
             binary = root / "codex"
             binary.write_text(
-                "#!/usr/bin/env python3\n"
-                "import time\n"
-                "time.sleep(10)\n",
+                "#!/usr/bin/env python3\nimport time\ntime.sleep(10)\n",
                 encoding="utf-8",
             )
             binary.chmod(0o755)
