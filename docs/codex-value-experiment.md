@@ -102,9 +102,19 @@ prompts, transcripts, and reasoning are discarded. Monetary cost is `null`
 because ChatGPT-authenticated `codex exec` reports tokens but not a dependable
 currency charge.
 
-Each run has a 15-minute timeout and a 150,000-input-token ceiling. A campaign
-stops after one million pilot input tokens. These controls are experiment
-limits, not product policy.
+Each run has an actively enforced 15-minute timeout plus independent
+post-execution stop thresholds of 400,000 reported input tokens and 100,000
+uncached input tokens. A campaign stops after observing 12 million reported
+input tokens or 3 million uncached input tokens. Because Codex reports usage
+only after a run finishes, token thresholds can overshoot by at most that one
+completed run; the report marks this enforcement mode explicitly. Both raw and
+uncached totals remain in the sanitized report. Inconsistent usage, including
+missing or partial usage fields and cached input greater than total input,
+fails the decision gate and stops the campaign after that run. When total input
+is present but its cached relation is invalid, uncached usage is conservatively
+reported as the total. The separate thresholds avoid treating a large runtime
+cache hit as new context while retaining an explicit usage guardrail. These
+controls are experiment limits, not product policy.
 
 ## Decision gate
 

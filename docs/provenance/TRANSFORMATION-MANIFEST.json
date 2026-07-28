@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "generated_at": "2026-07-26T03:24:00Z",
-  "last_updated_at": "2026-07-28T16:30:21Z",
+  "last_updated_at": "2026-07-28T16:41:00Z",
   "extraction_mode": "clean_transformation",
   "source_repository": {
     "visibility": "private_local_source",
@@ -351,6 +351,23 @@
         "docs/codex-value-experiment.md"
       ],
       "notes": "Replaced self-revealing objectives and in-workspace acceptance tests with opaque synthetic incident identifiers, a post-execution held-out evaluator, a mandatory leakage preflight, and a preregistered paired gate. No source-project content, prompt, transcript, Codex message, reasoning, credential, PII, private log, or evaluator output is persisted."
+    },
+    {
+      "date": "2026-07-28",
+      "base_revision": "69b2058951476eeec098122865b8c7bd1d51d3f3",
+      "mode": "repository_native_experiment_remediation",
+      "private_source_material_used": false,
+      "synthetic_examples_only": true,
+      "inputs": [
+        "sanitized held-out pilot token observations",
+        "current experimental Codex value harness limits"
+      ],
+      "destinations": [
+        "scripts/run_codex_value_experiment.py",
+        "tests/test_codex_value_experiment.py",
+        "docs/codex-value-experiment.md"
+      ],
+      "notes": "Separated raw and uncached post-execution token stop thresholds after a cache-heavy pilot observation, documented the possible one-run overshoot, and added aggregate and fail-closed usage evidence that stops on invalid observations. No prompt, transcript, Codex message, reasoning, evaluator output, source-project content, credential, PII, or private log was persisted in the repository."
     }
   ],
   "excluded_classes": [

@@ -69,7 +69,10 @@ def gate_run(
         "arm": arm,
         "repetition": repetition,
         "success": success,
-        "execution": {"uncached_input_tokens": uncached_input_tokens},
+        "execution": {
+            "uncached_input_tokens": uncached_input_tokens,
+            "usage_valid": True,
+        },
         "audits": {"memory": True, "continuity": True, "codex": True},
         "evaluator": evaluator,
     }
@@ -362,6 +365,28 @@ class CodexValueExperimentTests(unittest.TestCase):
             self.assertFalse(report["gate"]["passed"])
             self.assertFalse(report["gate"]["checks"]["real_three_repetition_campaign"])
             self.assertFalse(report["gate"]["checks"]["all_36_cells_complete"])
+            self.assertEqual(
+                report["usage_totals"]["input_tokens"],
+                sum(run["execution"]["input_tokens"] for run in report["runs"]),
+            )
+            self.assertEqual(
+                report["usage_totals"]["uncached_input_tokens"],
+                sum(
+                    run["execution"]["uncached_input_tokens"] for run in report["runs"]
+                ),
+            )
+            self.assertEqual(
+                report["limits"]["per_run_input_tokens"],
+                experiment.MAX_INPUT_TOKENS_PER_RUN,
+            )
+            self.assertEqual(
+                report["limits"]["per_run_uncached_input_tokens"],
+                experiment.MAX_UNCACHED_INPUT_TOKENS_PER_RUN,
+            )
+            self.assertEqual(
+                report["limits"]["token_threshold_enforcement"],
+                "post-execution",
+            )
             encoded = json.dumps(report)
             self.assertNotIn("<STATEWEAVE_CONTEXT>", encoded)
             self.assertNotIn("HIDDEN_EVALUATOR_SOURCE", encoded)
@@ -459,6 +484,195 @@ class CodexValueExperimentTests(unittest.TestCase):
         self.assertFalse(gate["checks"]["privacy"])
         self.assertFalse(gate["passed"])
 
+    def test_raw_and_uncached_token_caps_are_independent(self) -> None:
+        at_limit = {
+            "execution": {
+                "input_tokens": experiment.MAX_INPUT_TOKENS_PER_RUN,
+                "uncached_input_tokens": (experiment.MAX_UNCACHED_INPUT_TOKENS_PER_RUN),
+                "usage_valid": True,
+            }
+        }
+        self.assertIsNone(
+            experiment._token_stop_reason(
+                at_limit,
+                total_input_tokens=experiment.MAX_CAMPAIGN_INPUT_TOKENS,
+                total_uncached_input_tokens=(
+                    experiment.MAX_CAMPAIGN_UNCACHED_INPUT_TOKENS
+                ),
+            )
+        )
+        cases = (
+            (
+                experiment.MAX_INPUT_TOKENS_PER_RUN + 1,
+                0,
+                0,
+                0,
+                "per-run-input-token-cap",
+            ),
+            (
+                0,
+                experiment.MAX_UNCACHED_INPUT_TOKENS_PER_RUN + 1,
+                0,
+                0,
+                "per-run-uncached-input-token-cap",
+            ),
+            (
+                0,
+                0,
+                experiment.MAX_CAMPAIGN_INPUT_TOKENS + 1,
+                0,
+                "campaign-input-token-cap",
+            ),
+            (
+                0,
+                0,
+                0,
+                experiment.MAX_CAMPAIGN_UNCACHED_INPUT_TOKENS + 1,
+                "campaign-uncached-input-token-cap",
+            ),
+        )
+        for raw, uncached, total_raw, total_uncached, expected in cases:
+            with self.subTest(expected=expected):
+                run = {
+                    "execution": {
+                        "input_tokens": raw,
+                        "uncached_input_tokens": uncached,
+                        "usage_valid": True,
+                    }
+                }
+                self.assertEqual(
+                    experiment._token_stop_reason(
+                        run,
+                        total_input_tokens=total_raw,
+                        total_uncached_input_tokens=total_uncached,
+                    ),
+                    expected,
+                )
+
+    def test_campaign_stops_after_each_observed_token_threshold(self) -> None:
+        scenarios = (
+            (
+                "per-run-input-token-cap",
+                1,
+                experiment.MAX_INPUT_TOKENS_PER_RUN + 1,
+                0,
+                True,
+            ),
+            (
+                "per-run-uncached-input-token-cap",
+                1,
+                experiment.MAX_UNCACHED_INPUT_TOKENS_PER_RUN + 1,
+                experiment.MAX_UNCACHED_INPUT_TOKENS_PER_RUN + 1,
+                True,
+            ),
+            (
+                "campaign-input-token-cap",
+                31,
+                experiment.MAX_INPUT_TOKENS_PER_RUN,
+                0,
+                True,
+            ),
+            (
+                "campaign-uncached-input-token-cap",
+                31,
+                experiment.MAX_UNCACHED_INPUT_TOKENS_PER_RUN,
+                experiment.MAX_UNCACHED_INPUT_TOKENS_PER_RUN,
+                True,
+            ),
+            (
+                "invalid-token-usage",
+                1,
+                0,
+                0,
+                False,
+            ),
+        )
+        with TemporaryDirectory() as temporary:
+            source = source_project(Path(temporary) / "source")
+            for expected_reason, expected_runs, raw, uncached, usage_valid in scenarios:
+                with self.subTest(expected_reason=expected_reason):
+
+                    def observed_run(
+                        _source_project: Path,
+                        *,
+                        task_name: str,
+                        arm: str,
+                        repetition: int,
+                        **_kwargs: object,
+                    ) -> dict[str, object]:
+                        return {
+                            "task": task_name,
+                            "arm": arm,
+                            "repetition": repetition,
+                            "success": True,
+                            "execution": {
+                                "input_tokens": raw,
+                                "cached_input_tokens": raw - uncached,
+                                "uncached_input_tokens": uncached,
+                                "output_tokens": 7,
+                                "reasoning_tokens": 3,
+                                "usage_valid": usage_valid,
+                            },
+                            "audits": {
+                                "memory": True,
+                                "continuity": True,
+                                "codex": True,
+                            },
+                            "evaluator": {
+                                "sha256": "e" * 64,
+                                "exit_code": 0,
+                                "duration_ms": 1,
+                                "passed": True,
+                            },
+                        }
+
+                    args = argparse.Namespace(
+                        source_project=str(source),
+                        execute=True,
+                        model="synthetic-model",
+                        repetitions=3,
+                        timeout_seconds=30,
+                        fake_failure=False,
+                    )
+                    with (
+                        patch.object(
+                            experiment,
+                            "_run_preflight",
+                            return_value={"passed": True},
+                        ),
+                        patch.object(
+                            experiment,
+                            "_codex_cli_observation",
+                            return_value={
+                                "observed": True,
+                                "implementation": "codex-cli",
+                                "version": "9.8.7",
+                                "version_output_sha256": "c" * 64,
+                            },
+                        ),
+                        patch.object(
+                            experiment,
+                            "_one_run",
+                            side_effect=observed_run,
+                        ),
+                    ):
+                        report = experiment.run_experiment(args)
+
+                    self.assertEqual(report["stop_reason"], expected_reason)
+                    self.assertEqual(len(report["runs"]), expected_runs)
+                    self.assertFalse(report["gate"]["passed"])
+                    self.assertFalse(report["gate"]["checks"]["no_stop_reason"])
+                    self.assertEqual(
+                        report["usage_totals"],
+                        {
+                            "input_tokens": raw * expected_runs,
+                            "cached_input_tokens": (raw - uncached) * expected_runs,
+                            "uncached_input_tokens": uncached * expected_runs,
+                            "output_tokens": 7 * expected_runs,
+                            "reasoning_tokens": 3 * expected_runs,
+                        },
+                    )
+
     def test_cli_requires_explicit_execute_for_real_codex(self) -> None:
         payload = {
             "source_baseline": {"unchanged": True},
@@ -547,9 +761,80 @@ class CodexValueExperimentTests(unittest.TestCase):
             self.assertEqual(result["exit_code"], 0)
             self.assertEqual(result["input_tokens"], 10)
             self.assertEqual(result["cached_input_tokens"], 2)
+            self.assertEqual(result["uncached_input_tokens"], 8)
+            self.assertTrue(result["usage_valid"])
             self.assertEqual(result["event_types"], {"turn.completed": 1})
             self.assertEqual(result["discarded_event_count"], 1)
             self.assertNotIn("DO_NOT_PERSIST", json.dumps(result))
+
+    def test_codex_jsonl_parser_fails_closed_on_inconsistent_usage(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            binary = root / "jsonl_codex_invalid_usage_fixture.py"
+            binary.write_text(
+                "import json, sys\n"
+                "sys.stdin.read()\n"
+                "print(json.dumps({'type': 'turn.completed', 'usage': "
+                "{'input_tokens': 10, 'cached_input_tokens': 20, "
+                "'output_tokens': 3, 'reasoning_output_tokens': 1}}), flush=True)\n",
+                encoding="utf-8",
+            )
+            result = experiment._run_codex(
+                root,
+                "synthetic prompt",
+                model="synthetic-model",
+                timeout_seconds=5,
+                command_prefix=[sys.executable, str(binary)],
+            )
+
+            self.assertFalse(result["usage_valid"])
+            self.assertEqual(result["uncached_input_tokens"], 10)
+            invalid_run = gate_run(
+                experiment.TASKS[0],
+                "bundle",
+                1,
+                success=True,
+                uncached_input_tokens=10,
+            )
+            invalid_run["execution"]["usage_valid"] = False
+            gate = experiment._gate(
+                [invalid_run],
+                execute=True,
+                repetitions=3,
+                stop_reason=None,
+                preflight={"passed": True},
+            )
+            self.assertFalse(gate["checks"]["token_usage"])
+            self.assertFalse(gate["passed"])
+
+    def test_codex_jsonl_parser_rejects_missing_or_partial_usage(self) -> None:
+        fixtures = {
+            "missing": (
+                "print(json.dumps({'type': 'item.completed', "
+                "'item': {'type': 'agent_message'}}), flush=True)\n"
+            ),
+            "partial": (
+                "print(json.dumps({'type': 'turn.completed', "
+                "'usage': {'input_tokens': 10}}), flush=True)\n"
+            ),
+        }
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for label, event_source in fixtures.items():
+                with self.subTest(label=label):
+                    binary = root / f"jsonl_codex_{label}_usage_fixture.py"
+                    binary.write_text(
+                        "import json, sys\nsys.stdin.read()\n" + event_source,
+                        encoding="utf-8",
+                    )
+                    result = experiment._run_codex(
+                        root,
+                        "synthetic prompt",
+                        model="synthetic-model",
+                        timeout_seconds=5,
+                        command_prefix=[sys.executable, str(binary)],
+                    )
+                    self.assertFalse(result["usage_valid"])
 
 
 if __name__ == "__main__":
