@@ -22,7 +22,7 @@ from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Iterable
+from typing import Any, Iterable, Sequence
 
 from stateweave.adapters import (
     audit_codex_bridge,
@@ -143,12 +143,21 @@ def _validate_source(source_project: Path) -> Path:
     return module
 
 
-def _codex_cli_observation(command: str = "codex") -> dict[str, Any]:
+def _command_prefix(command: str | Sequence[str]) -> list[str]:
+    prefix = [command] if isinstance(command, str) else list(command)
+    if not prefix or any(not isinstance(part, str) or not part for part in prefix):
+        raise ValueError("command prefix must contain non-empty strings")
+    return prefix
+
+
+def _codex_cli_observation(
+    command: str | Sequence[str] = "codex",
+) -> dict[str, Any]:
     """Return allow-listed version evidence and discard all non-version output."""
 
     try:
         completed = subprocess.run(
-            [command, "--version"],
+            [*_command_prefix(command), "--version"],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
@@ -483,9 +492,10 @@ def _run_codex(
     *,
     model: str,
     timeout_seconds: int,
+    command_prefix: str | Sequence[str] = "codex",
 ) -> dict[str, Any]:
     command = [
-        "codex",
+        *_command_prefix(command_prefix),
         "exec",
         "--json",
         "--ephemeral",

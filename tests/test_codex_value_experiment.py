@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import os
+import sys
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
@@ -49,16 +49,15 @@ def source_project(root: Path) -> Path:
 class CodexValueExperimentTests(unittest.TestCase):
     def test_codex_cli_version_evidence_is_sanitized(self) -> None:
         with TemporaryDirectory() as temporary:
-            binary = Path(temporary) / "codex-version-fixture"
+            binary = Path(temporary) / "codex_version_fixture.py"
             binary.write_text(
-                "#!/bin/sh\n"
-                "printf 'codex-cli 9.8.7\\n'\n"
-                "printf 'DO_NOT_PERSIST_VERSION_STDERR\\n' >&2\n",
+                "import sys\n"
+                "print('codex-cli 9.8.7')\n"
+                "print('DO_NOT_PERSIST_VERSION_STDERR', file=sys.stderr)\n",
                 encoding="utf-8",
             )
-            binary.chmod(0o755)
 
-            observed = experiment._codex_cli_observation(str(binary))
+            observed = experiment._codex_cli_observation([sys.executable, str(binary)])
 
             self.assertEqual(
                 observed,
@@ -241,20 +240,18 @@ class CodexValueExperimentTests(unittest.TestCase):
     def test_silent_codex_process_is_killed_at_timeout(self) -> None:
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
-            binary = root / "codex"
+            binary = root / "silent_codex_fixture.py"
             binary.write_text(
-                "#!/usr/bin/env python3\nimport time\ntime.sleep(10)\n",
+                "import time\n\ntime.sleep(10)\n",
                 encoding="utf-8",
             )
-            binary.chmod(0o755)
-            environment = {"PATH": f"{root}{os.pathsep}{os.environ['PATH']}"}
-            with patch.dict(os.environ, environment):
-                result = experiment._run_codex(
-                    root,
-                    "synthetic prompt",
-                    model="synthetic-model",
-                    timeout_seconds=1,
-                )
+            result = experiment._run_codex(
+                root,
+                "synthetic prompt",
+                model="synthetic-model",
+                timeout_seconds=1,
+                command_prefix=[sys.executable, str(binary)],
+            )
             self.assertTrue(result["timed_out"])
             self.assertNotEqual(result["exit_code"], 0)
             self.assertLess(result["duration_ms"], 5_000)
@@ -262,9 +259,8 @@ class CodexValueExperimentTests(unittest.TestCase):
     def test_codex_jsonl_parser_discards_free_text_and_spoofed_usage(self) -> None:
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
-            binary = root / "codex"
+            binary = root / "jsonl_codex_fixture.py"
             binary.write_text(
-                "#!/usr/bin/env python3\n"
                 "import json, sys\n"
                 "sys.stdin.read()\n"
                 "print(json.dumps({'type': 'item.completed', 'item': "
@@ -275,15 +271,13 @@ class CodexValueExperimentTests(unittest.TestCase):
                 "'output_tokens': 3, 'reasoning_output_tokens': 1}}), flush=True)\n",
                 encoding="utf-8",
             )
-            binary.chmod(0o755)
-            environment = {"PATH": f"{root}{os.pathsep}{os.environ['PATH']}"}
-            with patch.dict(os.environ, environment):
-                result = experiment._run_codex(
-                    root,
-                    "synthetic prompt",
-                    model="synthetic-model",
-                    timeout_seconds=5,
-                )
+            result = experiment._run_codex(
+                root,
+                "synthetic prompt",
+                model="synthetic-model",
+                timeout_seconds=5,
+                command_prefix=[sys.executable, str(binary)],
+            )
 
             self.assertEqual(result["exit_code"], 0)
             self.assertEqual(result["input_tokens"], 10)

@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "generated_at": "2026-07-26T03:24:00Z",
-  "last_updated_at": "2026-07-27T23:21:35Z",
+  "last_updated_at": "2026-07-28T13:09:16Z",
   "extraction_mode": "clean_transformation",
   "source_repository": {
     "visibility": "private_local_source",
@@ -273,6 +273,22 @@
         "docs/codex-bridge.md"
       ],
       "notes": "The repository stores only the generic runner, synthetic tasks, and synthetic memory. Runtime copies are temporary and restricted to one textual allow-list path. Prompts, Codex JSONL, messages, reasoning, operational records, binaries, credentials, PII, and source-project content are not persisted."
+    },
+    {
+      "date": "2026-07-28",
+      "base_revision": "18ed22be0f79dd314b1735caa954b398d3214da1",
+      "mode": "repository_native_ci_remediation",
+      "private_source_material_used": false,
+      "synthetic_examples_only": true,
+      "inputs": [
+        "current experimental Codex host command boundary",
+        "public GitHub pull request 5 hosted Windows CI failure evidence"
+      ],
+      "destinations": [
+        "scripts/run_codex_value_experiment.py",
+        "tests/test_codex_value_experiment.py"
+      ],
+      "notes": "Replaced POSIX-only executable test fixtures with explicit Python interpreter command prefixes. The real runner still defaults to the codex executable, and no operational prompt, transcript, credential, PII, private log, or external-system implementation was copied."
     }
   ],
   "excluded_classes": [
