@@ -15,7 +15,7 @@ automatic project scanning, production maturity, or measured model value.
 The repository gate completed with:
 
 ```text
-153 tests passed
+157 tests passed
 backup_created: true
 migration_status: complete
 restored_ok: true
