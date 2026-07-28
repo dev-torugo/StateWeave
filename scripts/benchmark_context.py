@@ -41,10 +41,8 @@ HARD_NEGATIVES_PER_TOPIC = 2
 RETRIEVAL_QUERY_COUNT = RETRIEVAL_TOPIC_COUNT * QUERIES_PER_TOPIC
 RETRIEVAL_K_VALUES = (1, 4, 8)
 MAX_RETRIEVAL_ITEMS = max(RETRIEVAL_K_VALUES)
-MIN_EVALUATION_RECORDS = (
-    1
-    + RETRIEVAL_TOPIC_COUNT
-    * (RELEVANT_RECORDS_PER_TOPIC + HARD_NEGATIVES_PER_TOPIC)
+MIN_EVALUATION_RECORDS = 1 + RETRIEVAL_TOPIC_COUNT * (
+    RELEVANT_RECORDS_PER_TOPIC + HARD_NEGATIVES_PER_TOPIC
 )
 DEFAULT_EVALUATION_RECORDS = 1000
 QUALITY_THRESHOLDS = {
@@ -132,26 +130,17 @@ def retrieval_cases() -> list[RetrievalCase]:
         topic = f"topic{topic_index:02d}x"
         marker = f"marker{topic_index:02d}y"
         relevant_ids = tuple(
-            (
-                f"FCT-retrieval-topic-{topic_index:02d}"
-                f"-relevant-{record_index}"
-            )
+            (f"FCT-retrieval-topic-{topic_index:02d}-relevant-{record_index}")
             for record_index in range(RELEVANT_RECORDS_PER_TOPIC)
         )
         hard_negative_ids = tuple(
-            (
-                f"FCT-retrieval-topic-{topic_index:02d}"
-                f"-hard-negative-{record_index}"
-            )
+            (f"FCT-retrieval-topic-{topic_index:02d}-hard-negative-{record_index}")
             for record_index in range(HARD_NEGATIVES_PER_TOPIC)
         )
         for query_index, template in enumerate(objective_templates):
             cases.append(
                 RetrievalCase(
-                    identifier=(
-                        f"QRY-synthetic-topic-{topic_index:02d}"
-                        f"-{query_index}"
-                    ),
+                    identifier=(f"QRY-synthetic-topic-{topic_index:02d}-{query_index}"),
                     query={
                         "schema_version": 1,
                         "kind": "memory_query",
@@ -188,35 +177,23 @@ def _retrieval_records(
     hard_negatives: list[dict[str, Any]] = []
     for topic_index in range(RETRIEVAL_TOPIC_COUNT):
         topic_cases = cases[
-            topic_index
-            * QUERIES_PER_TOPIC : (topic_index + 1)
-            * QUERIES_PER_TOPIC
+            topic_index * QUERIES_PER_TOPIC : (topic_index + 1) * QUERIES_PER_TOPIC
         ]
         topic, marker = topic_cases[0].query["terms"]
-        statements = " ".join(
-            f"{case.query['objective']}." for case in topic_cases
-        )
-        for record_index, identifier in enumerate(
-            topic_cases[0].relevant_ids
-        ):
+        statements = " ".join(f"{case.query['objective']}." for case in topic_cases)
+        for record_index, identifier in enumerate(topic_cases[0].relevant_ids):
             target = synthetic_fact(identifier, topic_index)
             target["title"] = (
-                f"Synthetic {topic} {marker} relevant evidence "
-                f"{record_index}"
+                f"Synthetic {topic} {marker} relevant evidence {record_index}"
             )
             target["statement"] = statements
             target["claim"]["subject"] = (
-                f"retrieval-topic-{topic_index:02d}"
-                f"-relevant-{record_index}"
+                f"retrieval-topic-{topic_index:02d}-relevant-{record_index}"
             )
-            target["claim"]["object"] = (
-                f"relevant-{topic_index:02d}-{record_index}"
-            )
+            target["claim"]["object"] = f"relevant-{topic_index:02d}-{record_index}"
             relevant.append(target)
 
-        for record_index, identifier in enumerate(
-            topic_cases[0].hard_negative_ids
-        ):
+        for record_index, identifier in enumerate(topic_cases[0].hard_negative_ids):
             negative = synthetic_fact(identifier, topic_index)
             negative["title"] = (
                 f"Synthetic {topic} {marker} alternate signal "
@@ -227,8 +204,7 @@ def _retrieval_records(
                 "find, review, signal, evidence, and context separate."
             )
             negative["claim"]["subject"] = (
-                f"retrieval-topic-{topic_index:02d}"
-                f"-hard-negative-{record_index}"
+                f"retrieval-topic-{topic_index:02d}-hard-negative-{record_index}"
             )
             negative["claim"]["object"] = (
                 f"hard-negative-{topic_index:02d}-{record_index}"
@@ -245,9 +221,7 @@ def _retrieval_fillers(count: int) -> list[dict[str, Any]]:
             index,
         )
         payload["title"] = f"Synthetic neutral catalog item {index}"
-        payload["statement"] = (
-            f"Synthetic neutral catalog item {index} is available."
-        )
+        payload["statement"] = f"Synthetic neutral catalog item {index} is available."
         fillers.append(payload)
     return fillers
 
@@ -292,9 +266,7 @@ def timed(operation: Callable[[], Any], repeats: int) -> tuple[list[float], Any]
 def duration_summary(samples: list[float]) -> dict[str, float]:
     if not samples:
         raise ValueError("duration samples must not be empty")
-    if any(
-        sample < 0 or not math.isfinite(sample) for sample in samples
-    ):
+    if any(sample < 0 or not math.isfinite(sample) for sample in samples):
         raise ValueError("duration samples must be finite and non-negative")
     ordered = sorted(samples)
     p95_index = max(0, math.ceil(len(ordered) * 0.95) - 1)
@@ -309,9 +281,7 @@ def duration_summary(samples: list[float]) -> dict[str, float]:
 def byte_summary(samples: list[int]) -> dict[str, int | float]:
     if not samples:
         raise ValueError("byte samples must not be empty")
-    if any(
-        not isinstance(sample, int) or sample < 0 for sample in samples
-    ):
+    if any(not isinstance(sample, int) or sample < 0 for sample in samples):
         raise ValueError("byte samples must be non-negative integers")
     ordered = sorted(samples)
     p95_index = max(0, math.ceil(len(ordered) * 0.95) - 1)
@@ -333,8 +303,7 @@ def _validated_identifiers(
 ) -> list[str]:
     value = outcome.get(field)
     if not isinstance(value, list) or any(
-        not isinstance(identifier, str) or not identifier
-        for identifier in value
+        not isinstance(identifier, str) or not identifier for identifier in value
     ):
         raise ValueError(f"{field} must be a list of non-empty identifiers")
     identifiers = list(dict.fromkeys(value))
@@ -367,12 +336,8 @@ def retrieval_metrics(outcomes: list[dict[str, Any]]) -> dict[str, float]:
         for size in RETRIEVAL_K_VALUES:
             recalled = relevant.intersection(retrieved[:size])
             recalls[size].append(len(recalled) / len(relevant))
-        precise = relevant.intersection(
-            retrieved[:MAX_RETRIEVAL_ITEMS]
-        )
-        precision_at_8.append(
-            len(precise) / MAX_RETRIEVAL_ITEMS
-        )
+        precise = relevant.intersection(retrieved[:MAX_RETRIEVAL_ITEMS])
+        precision_at_8.append(len(precise) / MAX_RETRIEVAL_ITEMS)
         first_rank = next(
             (
                 rank
@@ -381,9 +346,7 @@ def retrieval_metrics(outcomes: list[dict[str, Any]]) -> dict[str, float]:
             ),
             None,
         )
-        reciprocal_ranks.append(
-            0.0 if first_rank is None else 1.0 / first_rank
-        )
+        reciprocal_ranks.append(0.0 if first_rank is None else 1.0 / first_rank)
     return {
         "recall_at_1": round(statistics.mean(recalls[1]), 6),
         "recall_at_4": round(statistics.mean(recalls[4]), 6),
@@ -398,16 +361,10 @@ def quality_gate(metrics: dict[str, float]) -> dict[str, Any]:
 
     missing = sorted(set(QUALITY_THRESHOLDS) - set(metrics))
     if missing:
-        raise ValueError(
-            f"quality metrics are missing gate inputs: {missing}"
-        )
-    observed = {
-        name: metrics[name] for name in QUALITY_THRESHOLDS
-    }
+        raise ValueError(f"quality metrics are missing gate inputs: {missing}")
+    observed = {name: metrics[name] for name in QUALITY_THRESHOLDS}
     failed = [
-        name
-        for name, minimum in QUALITY_THRESHOLDS.items()
-        if observed[name] < minimum
+        name for name, minimum in QUALITY_THRESHOLDS.items() if observed[name] < minimum
     ]
     return {
         "passed": not failed,
@@ -422,9 +379,7 @@ def _evaluate_bundles(
     durations: list[float],
 ) -> dict[str, Any]:
     if len(cases) != len(bundles) or len(cases) != len(durations):
-        raise ValueError(
-            "retrieval cases, bundles, and durations must align"
-        )
+        raise ValueError("retrieval cases, bundles, and durations must align")
     outcomes: list[dict[str, Any]] = []
     item_bytes: list[int] = []
     bundle_bytes: list[int] = []
@@ -477,9 +432,7 @@ def evaluate_retrieval(
         )
     cases = retrieval_cases()
     relevant, hard_negatives = _retrieval_records(cases)
-    filler_count = (
-        total_records - 1 - len(relevant) - len(hard_negatives)
-    )
+    filler_count = total_records - 1 - len(relevant) - len(hard_negatives)
     fillers = _retrieval_fillers(filler_count)
     with TemporaryDirectory() as temporary:
         config = initialize_project(
@@ -515,9 +468,7 @@ def evaluate_retrieval(
             indexed_durations.append(time.perf_counter() - started)
             indexed.append(bundle)
         if scanned != indexed:
-            raise RuntimeError(
-                "indexed evaluation differs from canonical scan"
-            )
+            raise RuntimeError("indexed evaluation differs from canonical scan")
 
         scan_evaluation = _evaluate_bundles(
             cases,
@@ -541,15 +492,11 @@ def evaluate_retrieval(
                 "relationship_edges": 0,
             },
             "query_count": len(cases),
-            "ground_truth_judgments": sum(
-                len(case.relevant_ids) for case in cases
-            ),
+            "ground_truth_judgments": sum(len(case.relevant_ids) for case in cases),
             "scan_index_equivalent": True,
             "index_build_ms": round(index_build_seconds * 1000, 3),
             "quality_gate": {
-                "passed": (
-                    scan_gate["passed"] and index_gate["passed"]
-                ),
+                "passed": (scan_gate["passed"] and index_gate["passed"]),
                 "thresholds": dict(QUALITY_THRESHOLDS),
                 "scan": scan_gate,
                 "index": index_gate,
@@ -632,9 +579,7 @@ def _concurrent_workload(
     operations_per_worker: int,
 ) -> dict[str, Any]:
     if readers < 1 or writers not in {0, 1}:
-        raise ValueError(
-            "workload requires readers >= 1 and zero or one writer"
-        )
+        raise ValueError("workload requires readers >= 1 and zero or one writer")
     if operations_per_worker < 1:
         raise ValueError("operations per worker must be positive")
     worker_count = readers + writers
@@ -666,54 +611,32 @@ def _concurrent_workload(
                 state_payload,
                 overwrite=True,
                 expected_sha256=state_revision,
-                idempotency_key=(
-                    f"benchmark-{access_path}-same-state-{operation}"
-                ),
+                idempotency_key=(f"benchmark-{access_path}-same-state-{operation}"),
             )
             samples.append(time.perf_counter() - started)
         return samples
 
     with ThreadPoolExecutor(max_workers=worker_count) as executor:
-        reader_futures = [
-            executor.submit(read_worker) for _ in range(readers)
-        ]
-        writer_futures = [
-            executor.submit(write_worker) for _ in range(writers)
-        ]
+        reader_futures = [executor.submit(read_worker) for _ in range(readers)]
+        writer_futures = [executor.submit(write_worker) for _ in range(writers)]
         wall_started = time.perf_counter()
         barrier.wait()
-        reader_results = [
-            future.result() for future in reader_futures
-        ]
-        writer_results = [
-            future.result() for future in writer_futures
-        ]
+        reader_results = [future.result() for future in reader_futures]
+        writer_results = [future.result() for future in writer_futures]
         wall_seconds = time.perf_counter() - wall_started
 
-    reader_samples = [
-        sample
-        for samples, _ in reader_results
-        for sample in samples
-    ]
-    writer_samples = [
-        sample for samples in writer_results for sample in samples
-    ]
+    reader_samples = [sample for samples, _ in reader_results for sample in samples]
+    writer_samples = [sample for samples in writer_results for sample in samples]
     bundle_ids = {
-        identifier
-        for _, identifiers in reader_results
-        for identifier in identifiers
+        identifier for _, identifiers in reader_results for identifier in identifiers
     }
     if len(bundle_ids) != 1:
-        raise RuntimeError(
-            "concurrent readers returned different bundles"
-        )
+        raise RuntimeError("concurrent readers returned different bundles")
     context_bundle_id = next(iter(bundle_ids))
     operation_count = len(reader_samples) + len(writer_samples)
     return {
         "workload": (
-            f"{readers}_readers"
-            if writers == 0
-            else f"{readers}_readers_1_writer"
+            f"{readers}_readers" if writers == 0 else f"{readers}_readers_1_writer"
         ),
         "readers": readers,
         "writers": writers,
@@ -728,9 +651,7 @@ def _concurrent_workload(
         ),
         "reader_latency": duration_summary(reader_samples),
         "writer_latency": (
-            duration_summary(writer_samples)
-            if writer_samples
-            else None
+            duration_summary(writer_samples) if writer_samples else None
         ),
     }
 
@@ -753,8 +674,7 @@ def benchmark_concurrency(
                 status = inspect_context_index(config, as_of=AS_OF)
                 if not status["valid"]:
                     raise RuntimeError(
-                        "concurrency index setup is invalid: "
-                        f"{status['reason']}"
+                        f"concurrency index setup is invalid: {status['reason']}"
                     )
             workloads = [
                 _concurrent_workload(
@@ -827,9 +747,7 @@ def positive_integer(value: str) -> int:
     try:
         parsed = int(value)
     except ValueError as exc:
-        raise argparse.ArgumentTypeError(
-            "value must be an integer"
-        ) from exc
+        raise argparse.ArgumentTypeError("value must be an integer") from exc
     if parsed < 1:
         raise argparse.ArgumentTypeError("value must be positive")
     return parsed
@@ -851,10 +769,7 @@ def main() -> int:
         "--sizes",
         type=parse_sizes,
         default=[100, 1000, 10000],
-        help=(
-            "comma-separated total record counts, "
-            "each including STATE-current"
-        ),
+        help=("comma-separated total record counts, each including STATE-current"),
     )
     parser.add_argument(
         "--repeats",
@@ -873,10 +788,7 @@ def main() -> int:
     parser.add_argument(
         "--concurrency-size",
         type=positive_integer,
-        help=(
-            "total records including state; "
-            "defaults to the first --sizes value"
-        ),
+        help=("total records including state; defaults to the first --sizes value"),
     )
     parser.add_argument(
         "--concurrency-operations",
@@ -895,12 +807,8 @@ def main() -> int:
         },
         "repeats": args.repeats,
         "size_semantics": "total_records_including_state",
-        "results": [
-            benchmark_size(size, args.repeats) for size in args.sizes
-        ],
-        "retrieval_evaluation": evaluate_retrieval(
-            args.evaluation_size
-        ),
+        "results": [benchmark_size(size, args.repeats) for size in args.sizes],
+        "retrieval_evaluation": evaluate_retrieval(args.evaluation_size),
         "concurrency": benchmark_concurrency(
             concurrency_size,
             args.concurrency_operations,

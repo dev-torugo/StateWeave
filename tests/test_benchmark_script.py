@@ -137,10 +137,7 @@ class BenchmarkScriptTests(unittest.TestCase):
         for access_path in concurrency["access_paths"]:
             workloads = access_path["workloads"]
             self.assertEqual(
-                [
-                    (item["readers"], item["writers"])
-                    for item in workloads
-                ],
+                [(item["readers"], item["writers"]) for item in workloads],
                 [(1, 0), (4, 0), (8, 0), (7, 1)],
             )
             for workload in workloads:
@@ -153,9 +150,7 @@ class BenchmarkScriptTests(unittest.TestCase):
                     0,
                 )
             self.assertIsNotNone(workloads[-1]["writer_latency"])
-        self.assertTrue(
-            concurrency["access_paths"][1]["index_valid_after"]
-        )
+        self.assertTrue(concurrency["access_paths"][1]["index_valid_after"])
         self.assertEqual(
             len(
                 {
@@ -186,9 +181,7 @@ class BenchmarkScriptTests(unittest.TestCase):
             ValueError,
             "relevant_ids must contain",
         ):
-            retrieval_metrics(
-                [{"relevant_ids": [], "retrieved_ids": []}]
-            )
+            retrieval_metrics([{"relevant_ids": [], "retrieved_ids": []}])
         with self.assertRaisesRegex(ValueError, "finite"):
             duration_summary([math.nan])
         with self.assertRaisesRegex(ValueError, "non-negative integers"):
@@ -235,24 +228,14 @@ class BenchmarkScriptTests(unittest.TestCase):
         self,
     ) -> None:
         cases = retrieval_cases()
-        relevant = [
-            identifier
-            for case in cases
-            for identifier in case.relevant_ids
-        ]
+        relevant = [identifier for case in cases for identifier in case.relevant_ids]
         negatives = [
-            identifier
-            for case in cases
-            for identifier in case.hard_negative_ids
+            identifier for case in cases for identifier in case.hard_negative_ids
         ]
 
         self.assertEqual(len(cases), 30)
-        self.assertTrue(
-            all(len(case.relevant_ids) == 4 for case in cases)
-        )
-        self.assertTrue(
-            all(len(case.hard_negative_ids) == 2 for case in cases)
-        )
+        self.assertTrue(all(len(case.relevant_ids) == 4 for case in cases))
+        self.assertTrue(all(len(case.hard_negative_ids) == 2 for case in cases))
         self.assertEqual(len(set(relevant)), 40)
         self.assertEqual(len(set(negatives)), 20)
         self.assertTrue(set(relevant).isdisjoint(negatives))
