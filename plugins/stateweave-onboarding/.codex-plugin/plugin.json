@@ -1,0 +1,22 @@
+{
+  "name": "stateweave-onboarding",
+  "version": "0.1.0",
+  "description": "Human-gated StateWeave onboarding and Candidate Inbox workflows",
+  "author": {
+    "name": "dev-torugo"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "StateWeave Onboarding",
+    "shortDescription": "Plan onboarding and review candidates safely.",
+    "longDescription": "Guide hash-bound sidecar onboarding and human-reviewed Candidate Inbox decisions through the local StateWeave CLI.",
+    "developerName": "dev-torugo",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "defaultPrompt": [
+      "Plan safe StateWeave onboarding for this project.",
+      "Show pending StateWeave memory candidates.",
+      "Preview a candidate before I decide."
+    ]
+  }
+}

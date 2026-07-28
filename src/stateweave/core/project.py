@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable, Mapping
@@ -115,6 +116,7 @@ def put_record(
     overwrite: bool = False,
     expected_sha256: str | None = None,
     idempotency_key: str | None = None,
+    acquire_lock: bool = True,
 ) -> Path:
     """Validate and atomically write a fact or decision."""
 
@@ -131,6 +133,7 @@ def put_record(
         overwrite=overwrite,
         expected_sha256_by_id=expected_by_id,
         idempotency_key=idempotency_key,
+        acquire_lock=acquire_lock,
     )
     return destinations[0]
 
@@ -143,8 +146,9 @@ def put_records(
     overwrite: bool = False,
     expected_sha256_by_id: Mapping[str, str | None] | None = None,
     idempotency_key: str | None = None,
+    acquire_lock: bool = True,
 ) -> list[Path]:
-    """Durably validate and mutate a relationship-preserving record batch."""
+    """Durably mutate records; callers disabling locking must hold the lock."""
 
     if not payloads:
         raise RecordError("record batch must not be empty")
@@ -187,7 +191,8 @@ def put_records(
     else:
         transaction_id, key_sha256 = transaction_id_for_key(idempotency_key)
 
-    with project_writer_lock(config):
+    lock = project_writer_lock(config) if acquire_lock else nullcontext()
+    with lock:
         journal_path = transaction_path(config, transaction_id)
         transaction_directory = transaction_payload_dir(config, transaction_id)
         if journal_path.exists() or transaction_directory.exists():

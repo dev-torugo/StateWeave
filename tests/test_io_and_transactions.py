@@ -13,6 +13,7 @@ from unittest.mock import patch
 
 from stateweave.cli import main
 from stateweave.core.audit import audit_repository
+from stateweave.core.backup import project_writer_lock
 from stateweave.core.errors import PathBoundaryError, RecordError
 from stateweave.core.io import read_json, safe_relative_path, sha256_file
 from stateweave.core.locking import inspect_writer_lock, recover_stale_writer_lock
@@ -27,6 +28,21 @@ from tests.helpers import fact, project, write_fact
 
 
 class IoAndTransactionTests(unittest.TestCase):
+    def test_put_record_can_reuse_an_explicitly_held_project_lock(self) -> None:
+        with TemporaryDirectory() as temporary:
+            config = project(Path(temporary) / "memory")
+
+            with project_writer_lock(config):
+                destination = put_record(
+                    config,
+                    fact("FCT-explicit-lock", value="serialized"),
+                    idempotency_key="explicit-lock",
+                    acquire_lock=False,
+                )
+
+            self.assertTrue(destination.is_file())
+            self.assertTrue(audit_repository(config).ok)
+
     def test_non_finite_json_is_rejected(self) -> None:
         with TemporaryDirectory() as temporary:
             path = Path(temporary) / "record.json"

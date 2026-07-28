@@ -180,13 +180,29 @@ After reviewing the returned `CND-...` candidate and preview:
 ```bash
 stateweave promote-candidate CND-<digest> \
   --config ./my-memory \
+  --expected-preview-sha256 <preview-sha256> \
   --reviewer-role maintainer \
   --promoted-at 2026-07-27T12:05:00Z \
   --confirm-human
 ```
 
-See `docs/continuity.md` for receipt/evaluation episodes, mutation plans, and
-recovery commands.
+List the Candidate Inbox by effective situation or record metadata, and reject
+one reviewed candidate without storing free-form conversation:
+
+```bash
+stateweave candidate-list --config ./my-memory --situation pending
+stateweave reject-candidate CND-<digest> \
+  --config ./my-memory \
+  --expected-preview-sha256 <preview-sha256> \
+  --reason-code out-of-scope \
+  --reviewer-role maintainer \
+  --decided-at 2026-07-27T12:05:00Z \
+  --confirm-human
+```
+
+See `docs/onboarding.md` for the human-gated onboarding and Candidate Inbox
+contract, and `docs/continuity.md` for receipt/evaluation episodes, mutation
+plans, and recovery commands.
 
 ## Prepare and reconcile a Codex host session
 

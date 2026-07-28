@@ -8,9 +8,11 @@ from stateweave.continuity.store import (
     apply_mutation_plan,
     audit_continuity,
     capture_candidate,
+    list_candidates,
     load_orchestration_documents,
     preview_candidate,
     promote_candidate,
+    reject_candidate,
     store_context_bundle,
     store_mutation_plan,
 )
@@ -21,9 +23,11 @@ __all__ = [
     "apply_mutation_plan",
     "audit_continuity",
     "capture_candidate",
+    "list_candidates",
     "load_orchestration_documents",
     "preview_candidate",
     "promote_candidate",
+    "reject_candidate",
     "store_context_bundle",
     "store_mutation_plan",
 ]

@@ -1,0 +1,4 @@
+interface:
+  display_name: "StateWeave Onboarding"
+  short_description: "Guide safe StateWeave project onboarding"
+  default_prompt: "Use $stateweave-onboarding to inspect this project and guide me through a human-confirmed onboarding plan."

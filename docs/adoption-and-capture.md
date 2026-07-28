@@ -105,7 +105,8 @@ finishes the same identities. Until replay, `audit-capture` reports the orphan
 binding.
 
 Captured candidates never write canonical memory. Operators still use
-`candidate-preview` and `promote-candidate --confirm-human`.
+`candidate-preview` followed by a digest-bound `promote-candidate` or
+`reject-candidate`, each with `--confirm-human`. See `docs/onboarding.md`.
 
 ## Audit and backup
 

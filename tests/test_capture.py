@@ -16,7 +16,11 @@ from stateweave.adoption import (
 from stateweave.capture import audit_capture, ingest_capture_request
 from stateweave.cli import main
 from stateweave.context import compile_context
-from stateweave.continuity import audit_continuity, promote_candidate
+from stateweave.continuity import (
+    audit_continuity,
+    preview_candidate,
+    promote_candidate,
+)
 from stateweave.core.backup import create_backup, restore_backup
 from stateweave.core.config import load_config
 from stateweave.core.errors import ContractError, RecordError
@@ -114,6 +118,10 @@ class CaptureInboxTests(unittest.TestCase):
                 candidate_id,
                 reviewer_role="maintainer",
                 promoted_at="2026-07-27T19:20:00Z",
+                expected_preview_sha256=preview_candidate(
+                    first_session,
+                    candidate_id,
+                )["preview_sha256"],
                 human_approved=True,
             )
 

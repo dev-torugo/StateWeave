@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "generated_at": "2026-07-26T03:24:00Z",
-  "last_updated_at": "2026-07-27T18:00:00Z",
+  "last_updated_at": "2026-07-28T03:10:00Z",
   "extraction_mode": "clean_transformation",
   "source_repository": {
     "visibility": "private_local_source",
@@ -254,6 +254,32 @@
         "docs/verification-report-adoption-capture-2026-07-27.md"
       ],
       "notes": "Implemented from the merged public StateWeave codebase with synthetic existing-project trees, capture requests, candidates, and cursors. No operational project content, repository history, prompt, transcript, credential, PII, customer artifact, raw log, private receipt, or concrete external-system adapter was copied."
+    },
+    {
+      "date": "2026-07-28",
+      "base_revision": "f304580f99d53bf639b9cf4f79403adf52459f97",
+      "mode": "repository_native_implementation",
+      "private_source_material_used": false,
+      "synthetic_examples_only": true,
+      "inputs": [
+        "current public StateWeave adoption, continuity, and CLI contracts",
+        "official Codex plugin and skill structure guidance",
+        "direct project-owner onboarding and Candidate Inbox objective"
+      ],
+      "destinations": [
+        ".agents/plugins/marketplace.json",
+        "src/stateweave/onboarding",
+        "src/stateweave/continuity",
+        "src/stateweave/core/project.py",
+        "src/stateweave/cli.py",
+        "plugins/stateweave-onboarding",
+        "tests/test_onboarding.py",
+        "tests/test_io_and_transactions.py",
+        "docs/onboarding.md",
+        "docs/decisions/ADR-0005-human-gated-onboarding.md",
+        "docs/verification-report-onboarding-2026-07-28.md"
+      ],
+      "notes": "Implemented with synthetic host projects and candidates only. The plugin stores no prompt, chat, raw log, credential, operational project content, PII, or customer artifact and does not edit AGENTS.md, ignore rules, or VCS state."
     }
   ],
   "excluded_classes": [
@@ -261,7 +287,7 @@
     "work requests, handoffs, acceptances, authorizations, and execution records",
     "telemetry snapshots, prices, private evidence, receipts, prompts, chats, and raw logs",
     "customer or laboratory datasets, projects, photos, attachments, and backups",
-    "business, billing, infrastructure, marketplace, and product-specific implementation",
+    "business, billing, infrastructure, universal marketplace, and product-specific implementation",
     "credentials, secrets, PII, banking data, and signed agreements",
     "runtime configuration and fixed project policy"
   ],

@@ -88,6 +88,7 @@ class ContinuityTests(unittest.TestCase):
                 candidate["id"],
                 reviewer_role="maintainer",
                 promoted_at="2026-07-27T12:01:00Z",
+                expected_preview_sha256=preview["preview_sha256"],
                 human_approved=True,
             )
 
@@ -202,10 +203,8 @@ class ContinuityTests(unittest.TestCase):
                     ]
                 )
             self.assertEqual(preview_status, 0)
-            self.assertEqual(
-                json.loads(preview_output.getvalue())["operation"],
-                "create",
-            )
+            preview = json.loads(preview_output.getvalue())
+            self.assertEqual(preview["operation"], "create")
 
             error = StringIO()
             with redirect_stderr(error):
@@ -219,6 +218,8 @@ class ContinuityTests(unittest.TestCase):
                         "maintainer",
                         "--promoted-at",
                         "2026-07-27T12:01:00Z",
+                        "--expected-preview-sha256",
+                        preview["preview_sha256"],
                     ]
                 )
             self.assertEqual(refused, 2)
@@ -236,6 +237,8 @@ class ContinuityTests(unittest.TestCase):
                         "maintainer",
                         "--promoted-at",
                         "2026-07-27T12:01:00Z",
+                        "--expected-preview-sha256",
+                        preview["preview_sha256"],
                         "--confirm-human",
                     ]
                 )
@@ -299,6 +302,10 @@ class ContinuityTests(unittest.TestCase):
                 first["id"],
                 reviewer_role="maintainer",
                 promoted_at="2026-07-27T12:02:00Z",
+                expected_preview_sha256=preview_candidate(
+                    config,
+                    first["id"],
+                )["preview_sha256"],
                 human_approved=True,
             )
             replayed_promotion = promote_candidate(
