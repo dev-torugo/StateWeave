@@ -1,0 +1,20 @@
+{
+  "name": "stateweave-local",
+  "interface": {
+    "displayName": "Stateweave Local"
+  },
+  "plugins": [
+    {
+      "name": "stateweave-onboarding",
+      "source": {
+        "source": "local",
+        "path": "./plugins/stateweave-onboarding"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

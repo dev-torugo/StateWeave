@@ -18,6 +18,7 @@ explicit host-ingestion boundary on top of the governed `memory-core`:
 
 - versioned project configuration;
 - dry-run, hash-confirmed sidecar adoption for existing projects;
+- human-gated onboarding plans with tracked, local, or deferred sidecar policy;
 - facts, decisions, and current state;
 - configurable TTL and review queues;
 - reciprocal supersession and backlinks;
@@ -29,7 +30,8 @@ explicit host-ingestion boundary on top of the governed `memory-core`:
 - explainable query and deterministic `ContextBundle` compilation under a
   UTF-8 byte budget;
 - a hash-bound, rebuildable retrieval index with safe scan fallback;
-- untrusted candidates, human-gated promotion, persistent workflow and
+- filterable Candidate Inbox, mandatory previews, immutable rejection
+  decisions, human-gated promotion, persistent workflow and
   orchestration episodes, receipts, evaluations, and governed write-back;
 - bounded content-policy hooks for ingress and retrieval;
 - immutable adapter-neutral capture envelopes, linear checkpoints, and
@@ -60,7 +62,9 @@ See `docs/project-plan.md` for the full extraction sequence and gates.
 - opt-in allow-listed telemetry and read-only observation;
 - project-owned policy packs with non-bypassable human gates.
 
-See `docs/continuity.md` for the end-to-end lifecycle,
+See `docs/onboarding.md` for the conversational onboarding and Candidate Inbox
+contract and repo-local Codex plugin installation,
+`docs/continuity.md` for the end-to-end lifecycle,
 `docs/adoption-and-capture.md` for existing-project deployment and host
 ingestion, `docs/codex-bridge.md` for the host integration,
 `docs/performance.md` for measured local evidence, and `docs/extensions.md`

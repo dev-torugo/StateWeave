@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:continuity:candidate-rejection:1",
+  "title": "StateWeave immutable candidate rejection 1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "candidate_id",
+    "candidate_sha256",
+    "preview_sha256",
+    "decision",
+    "reason_code",
+    "reviewer_role",
+    "decided_at",
+    "decision_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "candidate_rejection"},
+    "id": {"type": "string", "pattern": "^CRJ-[a-f0-9]{64}$"},
+    "candidate_id": {"type": "string", "pattern": "^CND-[a-f0-9]{64}$"},
+    "candidate_sha256": {"$ref": "#/$defs/sha256"},
+    "preview_sha256": {"$ref": "#/$defs/sha256"},
+    "decision": {"const": "reject"},
+    "reason_code": {
+      "enum": [
+        "duplicate",
+        "insufficient-evidence",
+        "out-of-scope",
+        "policy-blocked",
+        "superseded",
+        "other"
+      ]
+    },
+    "reviewer_role": {"$ref": "#/$defs/slug"},
+    "decided_at": {"type": "string", "format": "date-time"},
+    "decision_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "slug": {"type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$"}
+  }
+}

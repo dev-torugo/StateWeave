@@ -115,6 +115,17 @@ The current repository-native slice addresses adoption and upstream capture:
 - a synthetic proof from existing project through promotion and second-session
   retrieval.
 
+The onboarding usability slice adds:
+
+- persisted, hash-bound onboarding plans with explicit state, risk, decision,
+  and action sections;
+- operator-selected tracked, local, or deferred sidecar policy without VCS
+  mutation;
+- a filterable Candidate Inbox with derived effective situation;
+- mandatory per-candidate preview digests for promotion and immutable
+  rejection;
+- a repo-local, skills-only Codex plugin plus audit and backup/restore proof.
+
 These checkpoints do not expand publication authorization. Tags, releases,
 package publication, definitive licensing, support, and maturity claims retain
 their existing human gates.

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stateweave:onboarding:sidecar-policy-decision:1",
+  "title": "StateWeave sidecar policy decision 1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "onboarding_plan_sha256",
+    "adoption_plan_sha256",
+    "project_id",
+    "sidecar_policy",
+    "reviewer_role",
+    "decided_at",
+    "decision_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "sidecar_policy_decision"},
+    "id": {"type": "string", "pattern": "^OBD-[a-f0-9]{64}$"},
+    "onboarding_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "adoption_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "project_id": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+    "sidecar_policy": {"enum": ["tracked", "local"]},
+    "reviewer_role": {"$ref": "#/$defs/slug"},
+    "decided_at": {"type": "string", "format": "date-time"},
+    "decision_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "slug": {"type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$"}
+  }
+}

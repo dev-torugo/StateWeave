@@ -38,6 +38,7 @@ class ContinuityReport:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     candidate_count: int = 0
+    rejection_count: int = 0
     context_count: int = 0
     episode_count: int = 0
     plan_count: int = 0
@@ -52,6 +53,7 @@ class ContinuityReport:
             "errors": sorted(set(self.errors)),
             "warnings": sorted(set(self.warnings)),
             "candidate_count": self.candidate_count,
+            "rejection_count": self.rejection_count,
             "context_count": self.context_count,
             "episode_count": self.episode_count,
             "plan_count": self.plan_count,
@@ -64,6 +66,10 @@ def _root(config: ProjectConfig) -> Path:
 
 def _candidate_dir(config: ProjectConfig) -> Path:
     return _root(config) / "candidates"
+
+
+def _rejection_dir(config: ProjectConfig) -> Path:
+    return _root(config) / "candidate-decisions"
 
 
 def _context_dir(config: ProjectConfig) -> Path:
@@ -83,6 +89,7 @@ def _episode_dir(config: ProjectConfig, ledger: str) -> Path:
 def _ensure_store(config: ProjectConfig) -> None:
     for directory in (
         _candidate_dir(config),
+        _rejection_dir(config),
         _context_dir(config),
         _plan_dir(config),
         _episode_dir(config, "orchestration"),
@@ -305,6 +312,133 @@ def _load_candidate(config: ProjectConfig, identifier: str) -> dict[str, Any]:
     return candidate
 
 
+def _candidate_sha256(candidate: dict[str, Any]) -> str:
+    return sha256_bytes(canonical_json_bytes(candidate))
+
+
+def _rejection_payload(decision: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: value
+        for key, value in decision.items()
+        if key not in {"id", "decision_sha256"}
+    }
+
+
+def _rejection_path(config: ProjectConfig, candidate_id: str) -> Path:
+    if CANDIDATE_ID.fullmatch(candidate_id) is None:
+        raise RecordError(f"invalid candidate id: {candidate_id!r}")
+    return _rejection_dir(config) / f"{candidate_id}.json"
+
+
+def _validate_rejection(
+    decision: dict[str, Any],
+    source: str | Path,
+) -> list[str]:
+    errors = validate_contract(
+        decision,
+        package=PACKAGE,
+        filename="candidate-rejection.schema.json",
+        source=source,
+    )
+    digest = sha256_bytes(canonical_json_bytes(_rejection_payload(decision)))
+    if decision.get("decision_sha256") != digest:
+        errors.append(f"{source}: candidate rejection digest does not match")
+    if decision.get("id") != f"CRJ-{digest}":
+        errors.append(f"{source}: candidate rejection id does not match")
+    return sorted(set(errors))
+
+
+def _load_rejection(
+    config: ProjectConfig,
+    candidate_id: str,
+) -> dict[str, Any] | None:
+    path = _rejection_path(config, candidate_id)
+    if not path.exists():
+        return None
+    decision = _read_object(path)
+    errors = _validate_rejection(decision, path)
+    if errors:
+        raise RecordError("; ".join(errors))
+    return decision
+
+
+def _effective_situation(
+    config: ProjectConfig,
+    candidate: dict[str, Any],
+) -> str:
+    rejection = _load_rejection(config, candidate["id"])
+    if rejection is not None:
+        if rejection["candidate_sha256"] != _candidate_sha256(candidate):
+            return "blocked-rejection-drift"
+        return "rejected"
+    if candidate["status"] == "rejected":
+        return "rejected"
+    if candidate["status"] == "promoted":
+        return "promoted"
+
+    proposed = candidate["proposed_record"]
+    destination = record_destination(config, proposed["id"])
+    if destination.is_symlink():
+        return "blocked-target"
+    if not destination.exists():
+        return (
+            "pending"
+            if candidate["operation"] == "create"
+            else "blocked-missing-record"
+        )
+    if not destination.is_file():
+        return "blocked-target"
+    observed = sha256_file(destination)
+    if observed == candidate["proposed_record_sha256"]:
+        return "promotion-needs-reconciliation"
+    if candidate["operation"] == "create":
+        return "blocked-current-record"
+    if observed == candidate["expected_sha256"]:
+        return "pending"
+    return "blocked-stale-revision"
+
+
+def _preview_candidate_unlocked(
+    config: ProjectConfig,
+    candidate_id: str,
+) -> dict[str, Any]:
+    candidate = _load_candidate(config, candidate_id)
+    proposed = candidate["proposed_record"]
+    destination = record_destination(config, proposed["id"])
+    current: dict[str, Any] | None = None
+    current_sha256: str | None = None
+    if destination.is_file() and not destination.is_symlink():
+        current_payload = read_json(
+            destination,
+            max_bytes=config.limits.max_record_bytes,
+        )
+        if isinstance(current_payload, dict):
+            current = current_payload
+            current_sha256 = sha256_file(destination)
+    keys = set(proposed)
+    if current is not None:
+        keys.update(current)
+    changed_fields = sorted(
+        key for key in keys if current is None or current.get(key) != proposed.get(key)
+    )
+    preview = {
+        "candidate_id": candidate_id,
+        "candidate_sha256": _candidate_sha256(candidate),
+        "status": candidate["status"],
+        "effective_situation": _effective_situation(config, candidate),
+        "operation": candidate["operation"],
+        "record_id": proposed["id"],
+        "expected_sha256": candidate["expected_sha256"],
+        "current_sha256": current_sha256,
+        "proposed_sha256": candidate["proposed_record_sha256"],
+        "changed_fields": changed_fields,
+        "review_required": candidate["review_required"],
+        "content_findings": candidate["content_findings"],
+    }
+    preview["preview_sha256"] = sha256_bytes(canonical_json_bytes(preview))
+    return preview
+
+
 def preview_candidate(
     config: ProjectConfig,
     candidate_id: str,
@@ -312,39 +446,146 @@ def preview_candidate(
     """Return a read-only, hash-bound top-level diff for human review."""
 
     with project_writer_lock(config):
+        return _preview_candidate_unlocked(config, candidate_id)
+
+
+def list_candidates(
+    config: ProjectConfig,
+    *,
+    situation: str | None = None,
+    classification: str | None = None,
+    confidence: str | None = None,
+    operation: str | None = None,
+    source_type: str | None = None,
+    review_required: bool | None = None,
+) -> dict[str, Any]:
+    """List the Candidate Inbox with deterministic filters and derived state."""
+
+    with project_writer_lock(config):
+        directory = _candidate_dir(config)
+        if not directory.exists():
+            candidates: list[dict[str, Any]] = []
+        elif directory.is_symlink() or not directory.is_dir():
+            raise RecordError("candidate store must be a real directory")
+        else:
+            candidates = []
+            for path in sorted(directory.iterdir(), key=lambda item: item.name):
+                if path.is_symlink() or not path.is_file():
+                    raise RecordError(f"unexpected candidate store entry: {path}")
+                candidate = _load_candidate(config, path.stem)
+                effective = _effective_situation(config, candidate)
+                if situation is not None and effective != situation:
+                    continue
+                if (
+                    classification is not None
+                    and candidate["classification"] != classification
+                ):
+                    continue
+                if confidence is not None and candidate["confidence"] != confidence:
+                    continue
+                if operation is not None and candidate["operation"] != operation:
+                    continue
+                if (
+                    source_type is not None
+                    and candidate["source"]["type"] != source_type
+                ):
+                    continue
+                if (
+                    review_required is not None
+                    and candidate["review_required"] is not review_required
+                ):
+                    continue
+                rejection = _load_rejection(config, candidate["id"])
+                candidates.append(
+                    {
+                        "candidate_id": candidate["id"],
+                        "candidate_sha256": _candidate_sha256(candidate),
+                        "stored_status": candidate["status"],
+                        "effective_situation": effective,
+                        "captured_at": candidate["captured_at"],
+                        "classification": candidate["classification"],
+                        "confidence": candidate["confidence"],
+                        "operation": candidate["operation"],
+                        "record_id": candidate["proposed_record"]["id"],
+                        "source_type": candidate["source"]["type"],
+                        "review_required": candidate["review_required"],
+                        "rejection_id": (
+                            rejection["id"] if rejection is not None else None
+                        ),
+                    }
+                )
+    filters = {
+        "situation": situation,
+        "classification": classification,
+        "confidence": confidence,
+        "operation": operation,
+        "source_type": source_type,
+        "review_required": review_required,
+    }
+    return {"count": len(candidates), "filters": filters, "candidates": candidates}
+
+
+def reject_candidate(
+    config: ProjectConfig,
+    candidate_id: str,
+    *,
+    expected_preview_sha256: str,
+    reason_code: str,
+    reviewer_role: str,
+    decided_at: str,
+    human_approved: bool = False,
+) -> dict[str, Any]:
+    """Persist one immutable, candidate-bound human rejection decision."""
+
+    if not human_approved:
+        raise ContractError("candidate rejection requires explicit human approval")
+    if reviewer_role not in config.roles:
+        raise ContractError(f"reviewer role {reviewer_role!r} is not configured")
+    with project_writer_lock(config):
         candidate = _load_candidate(config, candidate_id)
-        proposed = candidate["proposed_record"]
-        destination = record_destination(config, proposed["id"])
-        current: dict[str, Any] | None = None
-        current_sha256: str | None = None
-        if destination.is_file() and not destination.is_symlink():
-            current_payload = read_json(
-                destination,
-                max_bytes=config.limits.max_record_bytes,
+        if candidate["status"] == "promoted":
+            raise ContractError(f"candidate {candidate_id} was already promoted")
+        existing = _load_rejection(config, candidate_id)
+        if existing is not None:
+            replay = {
+                "preview_sha256": expected_preview_sha256,
+                "reason_code": reason_code,
+                "reviewer_role": reviewer_role,
+                "decided_at": decided_at,
+            }
+            observed = {key: existing[key] for key in replay}
+            if observed != replay:
+                raise RecordError(
+                    "candidate rejection replay differs from immutable decision"
+                )
+            return existing
+        preview = _preview_candidate_unlocked(config, candidate_id)
+        if preview["preview_sha256"] != expected_preview_sha256:
+            raise RecordError("candidate preview changed; inspect a new preview")
+        if preview["effective_situation"] == "promotion-needs-reconciliation":
+            raise ContractError(
+                f"candidate {candidate_id} promotion requires reconciliation"
             )
-            if isinstance(current_payload, dict):
-                current = current_payload
-                current_sha256 = sha256_file(destination)
-        keys = set(proposed)
-        if current is not None:
-            keys.update(current)
-        changed_fields = sorted(
-            key
-            for key in keys
-            if current is None or current.get(key) != proposed.get(key)
-        )
-        return {
+        decision: dict[str, Any] = {
+            "schema_version": 1,
+            "kind": "candidate_rejection",
             "candidate_id": candidate_id,
-            "status": candidate["status"],
-            "operation": candidate["operation"],
-            "record_id": proposed["id"],
-            "expected_sha256": candidate["expected_sha256"],
-            "current_sha256": current_sha256,
-            "proposed_sha256": candidate["proposed_record_sha256"],
-            "changed_fields": changed_fields,
-            "review_required": candidate["review_required"],
-            "content_findings": candidate["content_findings"],
+            "candidate_sha256": preview["candidate_sha256"],
+            "preview_sha256": preview["preview_sha256"],
+            "decision": "reject",
+            "reason_code": reason_code,
+            "reviewer_role": reviewer_role,
+            "decided_at": decided_at,
         }
+        digest = sha256_bytes(canonical_json_bytes(_rejection_payload(decision)))
+        decision["id"] = f"CRJ-{digest}"
+        decision["decision_sha256"] = digest
+        errors = _validate_rejection(decision, "candidate-rejection")
+        if errors:
+            raise ContractError("; ".join(errors))
+        _ensure_store(config)
+        _immutable_write(_rejection_path(config, candidate_id), decision)
+        return decision
 
 
 def promote_candidate(
@@ -353,57 +594,67 @@ def promote_candidate(
     *,
     reviewer_role: str,
     promoted_at: str,
+    expected_preview_sha256: str | None = None,
     human_approved: bool = False,
     content_inspector: ContentInspector | None = None,
 ) -> dict[str, Any]:
     """Promote a reviewed candidate through the durable core transaction path."""
 
-    candidate = _load_candidate(config, candidate_id)
     if reviewer_role not in config.roles:
         raise ContractError(f"reviewer role {reviewer_role!r} is not configured")
-    if candidate["status"] == "rejected":
-        raise ContractError(f"candidate {candidate_id} was rejected")
-    findings = inspect_content(
-        candidate["proposed_record"],
-        phase="candidate_promotion",
-        inspector=content_inspector,
-    )
-    if any(finding.severity == "block" for finding in findings):
-        raise ContractError("candidate content is blocked by promotion policy")
-    if (candidate["review_required"] or any(findings)) and not human_approved:
+    if not human_approved:
         raise ContractError("candidate promotion requires explicit human approval")
-    proposed = candidate["proposed_record"]
-    identifier = proposed["id"]
-    promotion_key = f"promote:{candidate_id}"
-    transaction_id, _ = transaction_id_for_key(promotion_key)
-    destination = put_record(
-        config,
-        proposed,
-        overwrite=candidate["operation"] == "update",
-        expected_sha256=candidate["expected_sha256"],
-        idempotency_key=promotion_key,
-    )
-    record_sha256 = sha256_file(destination)
 
     with project_writer_lock(config):
-        current = _load_candidate(config, candidate_id)
-        if current["status"] == "promoted":
-            if current["promotion"]["record_sha256"] != record_sha256:
-                raise RecordError("promoted candidate result drifted")
-            return current
-        current["status"] = "promoted"
-        current["promotion"] = {
+        candidate = _load_candidate(config, candidate_id)
+        if candidate["status"] == "promoted":
+            return candidate
+        if expected_preview_sha256 is None:
+            raise ContractError("candidate promotion requires a reviewed preview")
+        if _load_rejection(config, candidate_id) is not None:
+            raise ContractError(f"candidate {candidate_id} was rejected")
+        if candidate["status"] == "rejected":
+            raise ContractError(f"candidate {candidate_id} was rejected")
+        preview = _preview_candidate_unlocked(config, candidate_id)
+        if preview["preview_sha256"] != expected_preview_sha256:
+            raise RecordError("candidate preview changed; inspect a new preview")
+        findings = inspect_content(
+            candidate["proposed_record"],
+            phase="candidate_promotion",
+            inspector=content_inspector,
+        )
+        if any(finding.severity == "block" for finding in findings):
+            raise ContractError("candidate content is blocked by promotion policy")
+        proposed = candidate["proposed_record"]
+        identifier = proposed["id"]
+        promotion_key = f"promote:{candidate_id}"
+        transaction_id, _ = transaction_id_for_key(promotion_key)
+        destination = put_record(
+            config,
+            proposed,
+            overwrite=candidate["operation"] == "update",
+            expected_sha256=candidate["expected_sha256"],
+            idempotency_key=promotion_key,
+            acquire_lock=False,
+        )
+        record_sha256 = sha256_file(destination)
+
+        candidate["status"] = "promoted"
+        candidate["promotion"] = {
             "record_id": identifier,
             "record_sha256": record_sha256,
             "transaction_id": transaction_id,
             "reviewer_role": reviewer_role,
             "promoted_at": promoted_at,
         }
-        errors = _validate_candidate(current, _candidate_path(config, candidate_id))
+        errors = _validate_candidate(
+            candidate,
+            _candidate_path(config, candidate_id),
+        )
         if errors:
             raise RecordError("; ".join(errors))
-        atomic_write_json(_candidate_path(config, candidate_id), current)
-        return current
+        atomic_write_json(_candidate_path(config, candidate_id), candidate)
+        return candidate
 
 
 def _episode_payload(kind: str, documents: list[dict[str, Any]]) -> dict[str, Any]:
@@ -806,7 +1057,13 @@ def _audit_store(config: ProjectConfig) -> ContinuityReport:
     root = _root(config)
     if not root.exists():
         return report
-    expected_root = {"candidates", "contexts", "mutation-plans", "episodes"}
+    expected_root = {
+        "candidate-decisions",
+        "candidates",
+        "contexts",
+        "mutation-plans",
+        "episodes",
+    }
     if root.is_symlink() or not root.is_dir():
         report.errors.append(f"{root}: continuity root must be a real directory")
         return report
@@ -823,6 +1080,7 @@ def _audit_store(config: ProjectConfig) -> ContinuityReport:
         re.compile(r"^CND-[a-f0-9]{64}\.json$"),
     )
     report.errors.extend(errors)
+    candidates_by_id: dict[str, dict[str, Any]] = {}
     for path in candidate_paths:
         try:
             candidate = _read_object(path)
@@ -842,6 +1100,8 @@ def _audit_store(config: ProjectConfig) -> ContinuityReport:
                 report.warnings.append(message)
         if path.name != f"{candidate.get('id')}.json":
             report.errors.append(f"{path}: candidate filename does not match id")
+        if isinstance(candidate.get("id"), str):
+            candidates_by_id[candidate["id"]] = candidate
         if candidate.get("status") == "promoted":
             promotion = candidate.get("promotion")
             if isinstance(promotion, dict):
@@ -868,6 +1128,57 @@ def _audit_store(config: ProjectConfig) -> ContinuityReport:
                             "rerun promotion to reconcile"
                         )
         report.candidate_count += 1
+
+    rejection_paths, errors = _scan_json_directory(
+        _rejection_dir(config),
+        re.compile(r"^CND-[a-f0-9]{64}\.json$"),
+    )
+    report.errors.extend(errors)
+    for path in rejection_paths:
+        try:
+            decision = _read_object(path)
+        except RecordError as exc:
+            report.errors.append(str(exc))
+            continue
+        report.errors.extend(_validate_rejection(decision, path))
+        candidate_id = decision.get("candidate_id")
+        rejected_candidate = (
+            candidates_by_id.get(candidate_id)
+            if isinstance(candidate_id, str)
+            else None
+        )
+        if rejected_candidate is None:
+            report.errors.append(f"{path}: rejected candidate is missing")
+        else:
+            if path.name != f"{rejected_candidate['id']}.json":
+                report.errors.append(
+                    f"{path}: candidate rejection filename does not match"
+                )
+            if decision.get("candidate_sha256") != _candidate_sha256(
+                rejected_candidate
+            ):
+                report.errors.append(f"{path}: rejected candidate digest has drifted")
+            if rejected_candidate.get("status") == "promoted":
+                report.errors.append(
+                    f"{path}: promoted candidate also has a rejection decision"
+                )
+            proposed = rejected_candidate.get("proposed_record")
+            if isinstance(proposed, dict) and isinstance(proposed.get("id"), str):
+                try:
+                    destination = record_destination(config, proposed["id"])
+                except RecordError:
+                    pass
+                else:
+                    expected = rejected_candidate.get("proposed_record_sha256")
+                    if (
+                        destination.is_file()
+                        and not destination.is_symlink()
+                        and sha256_file(destination) == expected
+                    ):
+                        report.errors.append(
+                            f"{path}: rejected candidate result already exists"
+                        )
+        report.rejection_count += 1
 
     context_paths, errors = _scan_json_directory(_context_dir(config), CONTEXT_ID)
     report.errors.extend(errors)

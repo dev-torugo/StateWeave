@@ -76,15 +76,22 @@ artifact path/hash, selector, observation time, validity time, extraction
 method, observer, and derivation IDs. Nullable fields remain explicit so a
 consumer cannot confuse missing evidence with a populated value.
 
-`candidate-preview` reports the intended create/update operation, current,
-expected, and proposed hashes, top-level changed fields, review requirement,
-and content findings without mutating the store. Update candidates require an
+`candidate-list` reports a filterable inbox with effective situation derived
+from candidate, canonical record, and immutable rejection evidence.
+`candidate-preview` reports the intended create/update operation, candidate,
+preview, current, expected, and proposed hashes, top-level changed fields,
+review requirement, and content findings without mutating the store. Update candidates require an
 `expected_sha256`; promotion rejects intervening changes.
 
 Candidates are untrusted. Obvious credential-shaped content is rejected before
-write. Instruction-shaped content is stored only as a warning. Promotion
-revalidates content and canonical record schemas, requires configured roles,
-honors the human gate, and uses a deterministic core idempotency receipt.
+write. Instruction-shaped content is stored only as a warning. Promotion and
+rejection require the exact preview digest and one explicit human confirmation
+per candidate. Promotion revalidates content and canonical record schemas,
+requires configured roles, and uses a deterministic core idempotency receipt.
+Rejection stores one immutable candidate-hash-bound decision with a bounded
+reason code and no free-form conversation. Promotion and rejection serialize
+under the canonical project writer lock, so one candidate cannot acquire both
+durable outcomes.
 
 The optional Capture Inbox batches host-supplied observations before this
 boundary. `capture-import` validates a versioned request, enforces a linear

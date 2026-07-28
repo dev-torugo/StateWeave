@@ -29,9 +29,14 @@ MODULE_SCHEMAS = {
         "capture-request.schema.json",
     ),
     "stateweave.continuity": (
+        "candidate-rejection.schema.json",
         "episodic-ledger.schema.json",
         "memory-candidate.schema.json",
         "mutation-plan.schema.json",
+    ),
+    "stateweave.onboarding": (
+        "onboarding-plan.schema.json",
+        "sidecar-policy-decision.schema.json",
     ),
     "stateweave.context": (
         "context-bundle.schema.json",

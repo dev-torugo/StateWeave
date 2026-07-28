@@ -33,8 +33,10 @@ from stateweave.continuity import (
     apply_mutation_plan,
     audit_continuity,
     capture_candidate,
+    list_candidates,
     preview_candidate,
     promote_candidate,
+    reject_candidate,
     store_context_bundle,
     store_mutation_plan,
 )
@@ -47,6 +49,11 @@ from stateweave.core.locking import inspect_writer_lock, recover_stale_writer_lo
 from stateweave.core.migrations import apply_migration, plan_migration
 from stateweave.core.project import initialize_project, recover_record_transaction
 from stateweave.core.transactions import inspect_transaction_store
+from stateweave.onboarding import (
+    apply_onboarding_plan,
+    audit_onboarding,
+    plan_onboarding,
+)
 from stateweave.policy import load_policy_pack
 
 
@@ -150,6 +157,36 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subcommands = parser.add_subparsers(dest="command", required=True)
 
+    onboarding_plan = subcommands.add_parser(
+        "onboarding-plan",
+        help="inspect a hash-bound onboarding plan without mutation",
+    )
+    onboarding_plan.add_argument("destination")
+    onboarding_plan.add_argument("--id", required=True, dest="project_id")
+    onboarding_plan.add_argument("--name", required=True, dest="project_name")
+    onboarding_plan.add_argument(
+        "--sidecar-policy",
+        choices=("tracked", "local", "defer"),
+        required=True,
+    )
+
+    onboarding_apply = subcommands.add_parser(
+        "onboarding-apply",
+        help="apply an exact reviewed onboarding plan",
+    )
+    onboarding_apply.add_argument("destination")
+    onboarding_apply.add_argument("--id", required=True, dest="project_id")
+    onboarding_apply.add_argument("--name", required=True, dest="project_name")
+    onboarding_apply.add_argument(
+        "--sidecar-policy",
+        choices=("tracked", "local", "defer"),
+        required=True,
+    )
+    onboarding_apply.add_argument("--expected-plan-sha256", required=True)
+    onboarding_apply.add_argument("--decided-at", required=True)
+    onboarding_apply.add_argument("--reviewer-role", required=True)
+    onboarding_apply.add_argument("--confirm-human", action="store_true")
+
     init = subcommands.add_parser("init", help="initialize an empty memory project")
     init.add_argument("destination")
     init.add_argument("--id", required=True, dest="project_id")
@@ -172,6 +209,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="audit sidecar identity and adoption receipt",
     )
     adoption_audit.add_argument("--config", default=".")
+
+    onboarding_audit = subcommands.add_parser(
+        "audit-onboarding",
+        help="audit persisted onboarding plans and sidecar policy",
+    )
+    onboarding_audit.add_argument("--config", default=".")
 
     audit = subcommands.add_parser("audit", help="validate the memory graph")
     audit.add_argument("--config", default=".")
@@ -296,6 +339,28 @@ def build_parser() -> argparse.ArgumentParser:
     candidate_preview.add_argument("candidate_id")
     candidate_preview.add_argument("--config", default=".")
 
+    candidate_list = subcommands.add_parser(
+        "candidate-list",
+        help="list and filter the Candidate Inbox with effective state",
+    )
+    candidate_list.add_argument("--config", default=".")
+    candidate_list.add_argument("--situation")
+    candidate_list.add_argument("--classification")
+    candidate_list.add_argument(
+        "--confidence",
+        choices=("low", "medium", "high"),
+    )
+    candidate_list.add_argument(
+        "--operation",
+        choices=("create", "update"),
+    )
+    candidate_list.add_argument("--source-type")
+    candidate_list.add_argument(
+        "--review-required",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+    )
+
     promote = subcommands.add_parser(
         "promote-candidate",
         help="promote a candidate through the durable memory transaction",
@@ -304,7 +369,31 @@ def build_parser() -> argparse.ArgumentParser:
     promote.add_argument("--config", default=".")
     promote.add_argument("--reviewer-role", required=True)
     promote.add_argument("--promoted-at", required=True)
+    promote.add_argument("--expected-preview-sha256", required=True)
     promote.add_argument("--confirm-human", action="store_true")
+
+    reject = subcommands.add_parser(
+        "reject-candidate",
+        help="record an immutable rejection for one reviewed candidate",
+    )
+    reject.add_argument("candidate_id")
+    reject.add_argument("--config", default=".")
+    reject.add_argument("--expected-preview-sha256", required=True)
+    reject.add_argument(
+        "--reason-code",
+        choices=(
+            "duplicate",
+            "insufficient-evidence",
+            "out-of-scope",
+            "policy-blocked",
+            "superseded",
+            "other",
+        ),
+        required=True,
+    )
+    reject.add_argument("--reviewer-role", required=True)
+    reject.add_argument("--decided-at", required=True)
+    reject.add_argument("--confirm-human", action="store_true")
 
     continuity_audit = subcommands.add_parser(
         "audit-continuity",
@@ -404,6 +493,28 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _run(args: argparse.Namespace) -> int:
+    if args.command == "onboarding-plan":
+        onboarding = plan_onboarding(
+            args.destination,
+            project_id=args.project_id,
+            project_name=args.project_name,
+            sidecar_policy=args.sidecar_policy,
+        )
+        print(_json(onboarding))
+        return 1 if onboarding["status"] == "blocked" else 0
+    if args.command == "onboarding-apply":
+        result = apply_onboarding_plan(
+            args.destination,
+            project_id=args.project_id,
+            project_name=args.project_name,
+            sidecar_policy=args.sidecar_policy,
+            expected_plan_sha256=args.expected_plan_sha256,
+            decided_at=args.decided_at,
+            reviewer_role=args.reviewer_role,
+            human_confirmed=args.confirm_human,
+        )
+        print(_json(result))
+        return 0
     if args.command == "init":
         config = initialize_project(
             args.destination,
@@ -447,6 +558,10 @@ def _run(args: argparse.Namespace) -> int:
         adoption_report = audit_adoption(config)
         print(_json(adoption_report.as_dict()))
         return 0 if adoption_report.ok else 1
+    if args.command == "audit-onboarding":
+        onboarding_report = audit_onboarding(config)
+        print(_json(onboarding_report.as_dict()))
+        return 0 if onboarding_report.ok else 1
     if args.command == "query":
         print(_json(query_memory(config, _memory_query_from_args(args))))
         return 0
@@ -492,15 +607,43 @@ def _run(args: argparse.Namespace) -> int:
     if args.command == "candidate-preview":
         print(_json(preview_candidate(config, args.candidate_id)))
         return 0
+    if args.command == "candidate-list":
+        print(
+            _json(
+                list_candidates(
+                    config,
+                    situation=args.situation,
+                    classification=args.classification,
+                    confidence=args.confidence,
+                    operation=args.operation,
+                    source_type=args.source_type,
+                    review_required=args.review_required,
+                )
+            )
+        )
+        return 0
     if args.command == "promote-candidate":
         promoted = promote_candidate(
             config,
             args.candidate_id,
             reviewer_role=args.reviewer_role,
             promoted_at=args.promoted_at,
+            expected_preview_sha256=args.expected_preview_sha256,
             human_approved=args.confirm_human,
         )
         print(_json(promoted))
+        return 0
+    if args.command == "reject-candidate":
+        rejected = reject_candidate(
+            config,
+            args.candidate_id,
+            expected_preview_sha256=args.expected_preview_sha256,
+            reason_code=args.reason_code,
+            reviewer_role=args.reviewer_role,
+            decided_at=args.decided_at,
+            human_approved=args.confirm_human,
+        )
+        print(_json(rejected))
         return 0
     if args.command == "audit-continuity":
         continuity_report = audit_continuity(config)
